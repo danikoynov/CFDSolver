@@ -1,6 +1,4 @@
 #include "linalg/gaussian_elimination.hpp"
-// If that does not work with your include paths, use:
-// #include "linalg/gaussian_elimination.hpp"
 
 #include <cmath>
 #include <iostream>
