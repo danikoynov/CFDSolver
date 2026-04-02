@@ -2,3 +2,7 @@
 
 # Cmake
 
+build/
+
+# Docs
+Logbook.txt
