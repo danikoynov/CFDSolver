@@ -11,7 +11,10 @@ namespace cfd::linalg {
         
         public:
             Matrix(std::size_t rows, std::size_t cols);
-            double& operator()(size_t i, size_t j);
-
-    }   
+            double& operator()(std::size_t i, std::size_t j);
+            const double& operator()(std::size_t i, std::size_t j) const;
+            void swap_rows(std::size_t i, std::size_t j);
+            std::size_t rows() const;
+            std::size_t cols() const;
+    };   
 }
