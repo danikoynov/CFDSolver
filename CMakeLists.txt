@@ -1,23 +1,26 @@
 cmake_minimum_required(VERSION 3.16)
+project(CFDSolver LANGUAGES CXX)
 
-project(cfdsolver LANGUAGES CXX)
-
-set(CMAKE CXX STANDARD 17)
-set(CMAKE CXX STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-
-add_library(cfdengine 
-    src/linalg/matrix.cpp
-)
-
-target_include_directories(cfdsolver
-    PUBLIC_HEADER
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
-target_compile_features(cfdsolver PUBLIC cxx_std_17)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 enable_testing()
 
-add_subdirectory(tests)
+add_library(cfd_linalg
+    src/linalg/gaussian_elimination.cpp
+    src/linalg/matrix.cpp
+    src/linalg/vector.cpp
+)
+
+target_include_directories(cfd_linalg PUBLIC include)
+
+add_executable(test_gaussian_elimination
+    tests/unit_tests/test_gaussian_elimination.cpp
+)
+
+target_link_libraries(test_gaussian_elimination PRIVATE cfd_linalg)
+
+add_test(
+    NAME test_gaussian_elimination
+    COMMAND test_gaussian_elimination
+)
