@@ -116,7 +116,7 @@ namespace cfd {
         /// uses interpolation of closest 4 walls 
         /// to return the velocity vector at given coordinates
 
-        try {
+        try { /// Could substitute try with an if for performance?
             check_coordinates_bounds(x, y);
         }
         catch(const std::out_of_range& e) {

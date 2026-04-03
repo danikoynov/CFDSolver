@@ -9,13 +9,12 @@ namespace cfd {
             std::size_t width_, height_;
             const double outside_pressure_;     
             std::vector<double> p_;
-
-        public:
+            void check_bounds(int i, int j) const;
+        
+            public:
 
             PressureField(std::size_t width, std::size_t height, 
                 double outside_pressure);
-            
-            void check_bounds(int i, int j) const;
 
             double& get_p(int i, int j);
             const double& get_p(int i, int j) const;

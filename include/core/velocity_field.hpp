@@ -24,14 +24,14 @@ namespace cfd {
             Velocity2D outside_velocity_;
             std::vector<double> u_; // u_ is horizontal velocity field [width + 1, height]
             std::vector<double> v_; // v_ is vertical velocity field [width, height + 1]
-
-        public:
-
-            VelocityField(std::size_t width, std::size_t height, double resolution);
-            
+        
             void check_u_bounds(int i, int j) const;
             void check_v_bounds(int i, int j) const;
             void check_coordinates_bounds(double x, double y) const;
+        
+            public:
+
+            VelocityField(std::size_t width, std::size_t height, double resolution);
             
             double& get_u(int i, int j);
             const double& get_u(int i, int j) const;
