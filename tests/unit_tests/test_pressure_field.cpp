@@ -51,77 +51,82 @@ namespace {
         );
     }
 
-    void test_check_bounds_accepts_valid_indices() {
+    void test_get_p_accepts_valid_indices() {
         PressureField field(3, 4, 0.0);
 
-        field.check_bounds(0, 0);
-        field.check_bounds(2, 3);
-        field.check_bounds(1, 2);
+        field.get_p(0, 0) = 1.0;
+        field.get_p(2, 3) = 2.0;
+        field.get_p(1, 2) = 3.0;
+
+        require(field.get_p(0, 0) == 1.0, "test_get_p_accepts_valid_indices failed at (0, 0)");
+        require(field.get_p(2, 3) == 2.0, "test_get_p_accepts_valid_indices failed at (2, 3)");
+        require(field.get_p(1, 2) == 3.0, "test_get_p_accepts_valid_indices failed at (1, 2)");
     }
 
-    void test_check_bounds_throws_on_negative_i() {
-        PressureField field(3, 4, 0.0);
-
-        bool threw = false;
-        try {
-            field.check_bounds(-1, 0);
-        } catch (const std::out_of_range&) {
-            threw = true;
-        }
-
-        require(threw, "test_check_bounds_throws_on_negative_i failed");
-    }
-
-    void test_check_bounds_throws_on_negative_j() {
+    void test_get_p_throws_on_negative_i() {
         PressureField field(3, 4, 0.0);
 
         bool threw = false;
         try {
-            field.check_bounds(0, -1);
+            field.get_p(-1, 0);
         } catch (const std::out_of_range&) {
             threw = true;
         }
 
-        require(threw, "test_check_bounds_throws_on_negative_j failed");
+        require(threw, "test_get_p_throws_on_negative_i failed");
     }
 
-    void test_check_bounds_throws_on_i_equal_width() {
+    void test_get_p_throws_on_negative_j() {
         PressureField field(3, 4, 0.0);
 
         bool threw = false;
         try {
-            field.check_bounds(3, 0);
+            field.get_p(0, -1);
         } catch (const std::out_of_range&) {
             threw = true;
         }
 
-        require(threw, "test_check_bounds_throws_on_i_equal_width failed");
+        require(threw, "test_get_p_throws_on_negative_j failed");
     }
 
-    void test_check_bounds_throws_on_j_equal_height() {
+    void test_get_p_throws_on_i_equal_width() {
         PressureField field(3, 4, 0.0);
 
         bool threw = false;
         try {
-            field.check_bounds(0, 4);
+            field.get_p(3, 0);
         } catch (const std::out_of_range&) {
             threw = true;
         }
 
-        require(threw, "test_check_bounds_throws_on_j_equal_height failed");
+        require(threw, "test_get_p_throws_on_i_equal_width failed");
     }
 
-    void test_get_p_throws_on_out_of_bounds_access() {
+    void test_get_p_throws_on_j_equal_height() {
+        PressureField field(3, 4, 0.0);
+
+        bool threw = false;
+        try {
+            field.get_p(0, 4);
+        } catch (const std::out_of_range&) {
+            threw = true;
+        }
+
+        require(threw, "test_get_p_throws_on_j_equal_height failed");
+    }
+
+    void test_const_get_p_throws_on_out_of_bounds_access() {
         PressureField field(2, 2, 0.0);
+        const PressureField& const_field = field;
 
         bool threw = false;
         try {
-            field.get_p(2, 1);
+            const_field.get_p(2, 1);
         } catch (const std::out_of_range&) {
             threw = true;
         }
 
-        require(threw, "test_get_p_throws_on_out_of_bounds_access failed");
+        require(threw, "test_const_get_p_throws_on_out_of_bounds_access failed");
     }
 
     void test_read_p_or_outside_returns_inside_value() {
@@ -209,12 +214,12 @@ int main() {
     run(test_get_p_write_and_read, "get_p write and read");
     run(test_const_get_p_reads_correct_value, "const get_p reads correct value");
 
-    run(test_check_bounds_accepts_valid_indices, "check_bounds accepts valid indices");
-    run(test_check_bounds_throws_on_negative_i, "check_bounds throws on negative i");
-    run(test_check_bounds_throws_on_negative_j, "check_bounds throws on negative j");
-    run(test_check_bounds_throws_on_i_equal_width, "check_bounds throws on i equal width");
-    run(test_check_bounds_throws_on_j_equal_height, "check_bounds throws on j equal height");
-    run(test_get_p_throws_on_out_of_bounds_access, "get_p throws on out of bounds access");
+    run(test_get_p_accepts_valid_indices, "get_p accepts valid indices");
+    run(test_get_p_throws_on_negative_i, "get_p throws on negative i");
+    run(test_get_p_throws_on_negative_j, "get_p throws on negative j");
+    run(test_get_p_throws_on_i_equal_width, "get_p throws on i equal width");
+    run(test_get_p_throws_on_j_equal_height, "get_p throws on j equal height");
+    run(test_const_get_p_throws_on_out_of_bounds_access, "const get_p throws on out of bounds access");
 
     run(test_read_p_or_outside_returns_inside_value, "read_p_or_outside returns inside value");
     run(test_read_p_or_outside_returns_outside_pressure_left, "read_p_or_outside returns outside pressure left");
