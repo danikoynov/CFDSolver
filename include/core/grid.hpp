@@ -9,6 +9,7 @@ namespace cfd {
 
         private:
             std::size_t width_, height_;
+            double resolution_;
             VelocityField velocity_;
             PressureField pressure_;
             BoundaryConditions bc_; 
@@ -28,6 +29,7 @@ namespace cfd {
 
             std::size_t width() const { return width_; }
             std::size_t height() const { return height_; }
+            double resolution() const { return resolution_; }
 
 
     };
