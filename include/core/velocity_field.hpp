@@ -21,7 +21,7 @@ namespace cfd {
         private:
             std::size_t width_, height_;
             double resolution_;
-            Velocity2D outside_velocity_;
+            Velocity2D outside_velocity_ = {0, 0};
             std::vector<double> u_; // u_ is horizontal velocity field [width + 1, height]
             std::vector<double> v_; // v_ is vertical velocity field [width, height + 1]
         
@@ -33,6 +33,8 @@ namespace cfd {
 
             VelocityField(std::size_t width, std::size_t height, double resolution);
             
+            void set_outside_velocity(Velocity2D);
+            
             double& get_u(int i, int j);
             const double& get_u(int i, int j) const;
             double& get_v(int i, int j);
@@ -40,6 +42,9 @@ namespace cfd {
 
             double read_v_or_outside(int i, int j) const;
             double read_u_or_outside(int i, int j) const;
+
+            double get_max_velocity_component() const;
+            double get_divergence(int i, int j) const;
 
             Velocity2D sample_at_horizontal_face(int i, int j) const;
             Velocity2D sample_at_vertical_face(int i, int j) const;

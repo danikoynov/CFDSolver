@@ -76,6 +76,37 @@ namespace cfd {
         return v_[i * (height_ + 1) + j];
     }
 
+    double VelocityField::get_max_velocity_component() const {
+        double max_vel = 0.0;
+
+        /// Vertical Faces
+        for (std::size_t i = 0; i <= width_; i ++)
+            for (std::size_t j = 0; j < height_; j ++) {
+                double u = std::abs(get_u(i, j));
+                if (u > max_vel)
+                    max_vel = u;
+            }
+            
+        /// Horizontal faces
+        for (std::size_t i = 0; i < width_; i ++)
+            for (std::size_t j = 0; j <= height_; j ++) {
+                double v = std::abs(get_v(i, j));
+                if (v > max_vel)
+                    max_vel = v;
+            }
+
+        return max_vel;
+    }
+
+    void VelocityField::set_outside_velocity(Velocity2D outside_velocity) {
+        outside_velocity_ = outside_velocity;
+    }
+    
+    double VelocityField::get_divergence(int i, int j) const {
+        return (get_u(i + 1, j) - get_u(i, j)) / resolution_ +
+                (get_v(i, j + 1) - get_v(i, j)) / resolution_;
+    }
+
     Velocity2D VelocityField::sample_at_vertical_face(int i, int j) const {
         /// Get velocity vector at the vertical face on the left of cell [i, j]
         
