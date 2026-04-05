@@ -35,5 +35,9 @@ namespace cfd {
         return get_p(i, j);
     }
 
+    double PressureField::outside_pressure() const {
+        return outside_pressure_;
+    }
+
 
 }

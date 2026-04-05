@@ -21,5 +21,7 @@ namespace cfd {
 
             double read_p_or_outside(int i, int j) const;
 
+            double outside_pressure() const;
+
     };
 }
