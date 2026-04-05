@@ -24,7 +24,15 @@ namespace cfd {
             void prescribe_u_value(int i, int j, double val);
             void prescribe_v_value(int i, int j, double val);
 
+            bool is_u_prescribed(int i, int j) const;
+            bool is_v_prescribed(int i, int j) const;
+
             const std::unordered_map<std::size_t, double>& prescribed_u() const;
             const std::unordered_map<std::size_t, double>& prescribed_v() const;
+
+            double prescribed_u(int i, int j) const;
+            double prescribed_v(int i, int j) const;
+
+            CellType type(int i, int j) const;
     };
 }

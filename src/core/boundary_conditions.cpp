@@ -52,4 +52,69 @@ namespace cfd {
     const std::unordered_map<std::size_t, double>& BoundaryConditions::prescribed_v() const {
         return prescribed_v_;
     }
+
+    double BoundaryConditions::prescribed_u(int i, int j) const {
+        if (i < 0 || i >  static_cast<int>(width_) ||
+            j < 0 || j >= static_cast<int>(height_)) {
+            throw std::out_of_range("boundary condition u indexes out of bounds");
+        }
+        
+        std::size_t id = 
+            static_cast<std::size_t>(i) * height_ + 
+            static_cast<std::size_t>(j);
+        
+        return prescribed_u_.at(id);
+    }
+
+    double BoundaryConditions::prescribed_v(int i, int j) const {
+        if (i < 0 || i >=  static_cast<int>(width_) ||
+            j < 0 || j > static_cast<int>(height_)) {
+            throw std::out_of_range("boundary condition v indexes out of bounds");
+        }
+
+        std::size_t id = 
+            static_cast<std::size_t>(i) * (height_ + 1) + 
+            static_cast<std::size_t>(j);
+        
+        return prescribed_v_.at(id);
+    }
+    
+    bool BoundaryConditions::is_u_prescribed(int i, int j) const {
+        if (i < 0 || i >  static_cast<int>(width_) ||
+            j < 0 || j >= static_cast<int>(height_)) {
+            throw std::out_of_range("boundary condition u indexes out of bounds");
+        }
+
+        std::size_t id = 
+            static_cast<std::size_t>(i) * height_ + 
+            static_cast<std::size_t>(j);
+        
+        return (prescribed_u_.find(id) != prescribed_u_.end());
+    }
+    
+    bool BoundaryConditions::is_v_prescribed(int i, int j) const {
+        if (i < 0 || i >=  static_cast<int>(width_) ||
+            j < 0 || j > static_cast<int>(height_)) {
+            throw std::out_of_range("boundary condition v indexes out of bounds");
+        }
+
+        std::size_t id = 
+            static_cast<std::size_t>(i) * (height_ + 1) + 
+            static_cast<std::size_t>(j);
+        
+        return (prescribed_v_.find(id) != prescribed_v_.end());
+    }
+    
+    CellType BoundaryConditions::type(int i, int j) const {
+        if (i < 0 || i >=  static_cast<int>(width_) ||
+            j < 0 || j >=  static_cast<int>(height_)) {
+            return CellType::BOUNDARY;
+        }
+        
+        std::size_t id = 
+            static_cast<std::size_t>(i) * (height_) + 
+            static_cast<std::size_t>(j);
+
+        return type_[id];
+    }
 }
