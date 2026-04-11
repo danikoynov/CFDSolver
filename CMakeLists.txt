@@ -1,8 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
 project(CFDSolver LANGUAGES CXX)
 
+set(PYBIND11_FINDPYTHON ON)
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development.Module)
+add_subdirectory(external/pybind11)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 enable_testing()
 
@@ -19,6 +24,14 @@ add_library(cfd_core
     src/core/grid.cpp
     src/core/simulator.cpp
 )
+
+pybind11_add_module(cfdsolver_py
+    src/python/bindings.cpp
+)
+
+target_link_libraries(cfdsolver_py PRIVATE cfd_core)
+target_include_directories(cfdsolver_py PRIVATE include)
+
 
 target_include_directories(cfd_linalg PUBLIC include)
 target_include_directories(cfd_core PUBLIC include)
@@ -90,3 +103,11 @@ add_test(
     NAME test_dynamics
     COMMAND test_dynamics
 )
+
+# Benchmarks
+
+add_executable(lid_driven_cavity_benchmark
+    benchmarks/lid_driven_cavity.cpp
+)
+
+target_link_libraries(lid_driven_cavity_benchmark PRIVATE cfd_core)
