@@ -7,7 +7,7 @@
 const double TOL = 1e-9;
 
 void test_uniform_velocity_field_is_preserved_by_advection() {
-    cfd::Simulator sim(5, 5, 0.1, 0.0, 1.225, false);
+    cfd::Simulator sim(5, 5, 0.1, 0.0, 1.225, false, 0.01);
 
     auto& velocity = sim.grid().velocity();
 

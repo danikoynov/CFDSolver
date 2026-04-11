@@ -12,7 +12,7 @@ const double DIV_TOL_BIG = 1e-8;
 const int STEPS = 100;
 
 void test_zero_state_stays_zero() {
-    cfd::Simulator sim(10, 10, 0.1, 0.0, 1.225, false);
+    cfd::Simulator sim(10, 10, 0.1, 0.0, 1.225, false, 0.01);
 
     for (int i = 0; i < STEPS; i++)
         sim.tick();
@@ -45,7 +45,7 @@ void test_zero_state_stays_zero() {
 }
 
 void test_projection_makes_small_field_divergence_free() {
-    cfd::Simulator sim(3, 3, 0.1, 0.0, 1.225, false);
+    cfd::Simulator sim(3, 3, 0.1, 0.0, 1.225, false, 0.01);
 
     auto& velocity = sim.grid().velocity();
 
@@ -106,7 +106,7 @@ void test_projection_makes_small_field_divergence_free() {
 }
 
 void test_projection_makes_big_field_divergence_free() {
-    cfd::Simulator sim(10, 10, 0.1, 0.0, 1.225, false);
+    cfd::Simulator sim(10, 10, 0.1, 0.0, 1.225, false, 0.01);
 
     auto& velocity = sim.grid().velocity();
 
@@ -157,7 +157,7 @@ void test_projection_makes_big_field_divergence_free() {
 }
 
 void test_body_forces_update_velocity_correctly() {
-    cfd::Simulator sim(3, 3, 0.1, 0.0, 1.225, false);
+    cfd::Simulator sim(3, 3, 0.1, 0.0, 1.225, false, 0.01);
 
     const double dt = 0.2;
     const double ax = 1.5;
