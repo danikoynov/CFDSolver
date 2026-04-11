@@ -20,7 +20,8 @@ namespace cfd {
 
         public:
             BoundaryConditions(std::size_t width, std::size_t height);
-
+    
+            void set_cell_type(int i, int j, CellType cell_type); 
             void prescribe_u_value(int i, int j, double val);
             void prescribe_v_value(int i, int j, double val);
 

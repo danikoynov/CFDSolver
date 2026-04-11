@@ -19,11 +19,13 @@ namespace cfd {
             static_cast<std::size_t>(i) * height_ + 
             static_cast<std::size_t>(j);
 
-        if (prescribed_u_.find(id) != prescribed_u_.end()) {
-            throw std::runtime_error("boundary condition for u already prescribed");
+        bool key_present = prescribed_u_.find(id) != prescribed_u_.end(); 
+        if (key_present && prescribed_u_.at(id) != val) {
+            throw std::runtime_error("boundary condition for u already has a different value prescribed");
         }
 
-        prescribed_u_.insert({id, val});
+        if (!key_present)   
+            prescribed_u_.insert({id, val});
     }
 
     void BoundaryConditions::prescribe_v_value(int i, int j, double val) {
@@ -36,12 +38,14 @@ namespace cfd {
         std::size_t id = 
             static_cast<std::size_t>(i) * (height_ + 1) + 
             static_cast<std::size_t>(j);
-
-        if (prescribed_v_.find(id) != prescribed_v_.end()) {
-            throw std::runtime_error("boundary condition for v already prescribed");
+        
+        bool key_present = prescribed_v_.find(id) != prescribed_v_.end(); 
+        if (key_present && prescribed_v_.at(id) != val) {
+            throw std::runtime_error("boundary condition for v already has a different value prescribed");
         }
 
-        prescribed_v_.insert({id, val});
+        if (!key_present)   
+            prescribed_v_.insert({id, val});
     }
 
 
@@ -116,5 +120,18 @@ namespace cfd {
             static_cast<std::size_t>(j);
 
         return type_[id];
+    }
+
+    void BoundaryConditions::set_cell_type(int i, int j, CellType cell_type) {
+        if (i < 0 || i >=  static_cast<int>(width_) ||
+            j < 0 || j >=  static_cast<int>(height_)) {
+            throw std::out_of_range("setting cell type indexes out of bounds");
+        }
+        
+        std::size_t id = 
+            static_cast<std::size_t>(i) * (height_) + 
+            static_cast<std::size_t>(j);
+
+        type_[id] = cell_type;
     }
 }
