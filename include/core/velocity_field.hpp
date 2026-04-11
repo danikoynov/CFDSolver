@@ -45,6 +45,8 @@ namespace cfd {
 
             double get_max_velocity_component() const;
             double get_divergence(int i, int j) const;
+            double get_u_laplacian(int i, int j) const;
+            double get_v_laplacian(int i, int j) const;
 
             Velocity2D sample_at_horizontal_face(int i, int j) const;
             Velocity2D sample_at_vertical_face(int i, int j) const;

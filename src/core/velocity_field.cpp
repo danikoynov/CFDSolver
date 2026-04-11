@@ -107,6 +107,34 @@ namespace cfd {
                 (get_v(i, j + 1) - get_v(i, j)) / resolution_;
     }
 
+    double VelocityField::get_u_laplacian(int i, int j) const {
+        /// Returns the Laplacian of u at the left face of cell [i, j]
+
+        double x_contribution =
+            read_u_or_outside(i + 1, j) + read_u_or_outside(i - 1, j) - 
+                2.0 * read_u_or_outside(i, j);
+
+        double y_contribution =
+            read_u_or_outside(i, j + 1) + read_u_or_outside(i, j - 1) - 
+                2.0 * read_u_or_outside(i, j);
+
+        return (x_contribution + y_contribution) / (resolution_ * resolution_);
+    }
+
+    double VelocityField::get_v_laplacian(int i, int j) const {
+        /// Returns the Laplacian of v at the bottom face of cell [i, j]
+
+        double x_contribution =
+            read_v_or_outside(i + 1, j) + read_v_or_outside(i - 1, j) - 
+                2.0 * read_v_or_outside(i, j);
+
+        double y_contribution =
+            read_v_or_outside(i, j + 1) + read_v_or_outside(i, j - 1) - 
+                2.0 * read_v_or_outside(i, j);
+
+        return (x_contribution + y_contribution) / (resolution_ * resolution_);
+    }
+
     Velocity2D VelocityField::sample_at_vertical_face(int i, int j) const {
         /// Get velocity vector at the vertical face on the left of cell [i, j]
         
@@ -130,7 +158,7 @@ namespace cfd {
     }
 
     Velocity2D VelocityField::sample_at_corner(int i, int j) const {
-        /// returns the velocity vector at the bottom left corenr of cell [i, j]
+        /// returns the velocity vector at the bottom left corner of cell [i, j]
 
         Velocity2D up    = sample_at_vertical_face(i, j);
         Velocity2D right = sample_at_horizontal_face(i, j);
