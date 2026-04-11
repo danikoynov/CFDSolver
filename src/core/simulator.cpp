@@ -8,17 +8,24 @@ namespace cfd {
 
     Simulator::Simulator(std::size_t width, std::size_t height,
         double resolution, double outside_pressure, double fluid_density,
-        bool apply_gravity):
+        bool apply_gravity, double viscosity):
         grid_(width, height, resolution, outside_pressure), 
-        fluid_density_(fluid_density), apply_gravity_(apply_gravity) {}
+        fluid_density_(fluid_density), apply_gravity_(apply_gravity),
+        viscosity_(viscosity) {}
 
     double Simulator::determine_timestep() const {
         double max_vel = grid_.velocity().get_max_velocity_component();
+        double dx = grid_.resolution();
 
-        if (max_vel == 0.0)
-            return FALLBACK_MAX_TIMESTEP;
-    
-        return std::min(FALLBACK_MAX_TIMESTEP, CFL * grid_.resolution() / max_vel);
+        double advective_dt = FALLBACK_MAX_TIMESTEP;
+        if (max_vel > 0.0)
+            advective_dt = CFL * dx / max_vel;
+
+        double diffusive_dt = FALLBACK_MAX_TIMESTEP;
+        if (viscosity_ > 0.0)
+            diffusive_dt = 0.25 * dx * dx / viscosity_;
+
+        return std::min(FALLBACK_MAX_TIMESTEP, std::min(advective_dt, diffusive_dt));
     }
 
     void Simulator::advect(double timestep) {
@@ -92,7 +99,7 @@ namespace cfd {
         for (const auto& [key, value] : prescribed_u) {
             std::size_t i = key / (grid_.height());
             std::size_t j = key % (grid_.height());
-            
+
             grid_.velocity().get_u(i, j) = value;
         }
 
@@ -163,7 +170,6 @@ namespace cfd {
 
     void Simulator::build_equation(int i, int j, double timestep,
                 linalg::Matrix& poisson_matrix, linalg::Vector& poisson_rhs) {
-        
         std::size_t h = grid_.height();
         auto convert_index = [h](std::size_t i, std::size_t j) {
             return i * h + j;
@@ -301,14 +307,14 @@ namespace cfd {
         );                                       // Currently, only one island is considered
 
         linalg::Vector poisson_rhs(number_of_cells + 1);
-        
+   
         auto is_edge = [&](int i, int j) { 
             return (bc.type(i - 1, j) == CellType::BOUNDARY ||
                     bc.type(i, j - 1) == CellType::BOUNDARY ||
                     bc.type(i + 1, j) == CellType::BOUNDARY ||
                     bc.type(i, j + 1) == CellType::BOUNDARY);
         };
-
+        
         bool is_island = true;
         for (int i = 0; i < w; i ++)
             for (int j = 0; j < h; j ++) {
@@ -338,14 +344,41 @@ namespace cfd {
         
         advect(timestep);
         apply_boundary_conditions();
-
+        
+        apply_viscosity(timestep);
+        apply_boundary_conditions();
+        
         if (apply_gravity_) {
             apply_body_forces(timestep, 0.0, GRAVITY_AY);
             apply_boundary_conditions();
         }
-
+        
         project(timestep);
-        //apply_boundary_conditions();
+        apply_boundary_conditions();
+    }
+
+    void Simulator::apply_viscosity(double timestep) {
+        std::size_t h = grid_.height();
+        std::size_t w = grid_.width();
+
+        auto& vf = grid_.velocity();
+        const double dx = grid_.resolution();
+
+        VelocityField next_field(w, h, dx);
+
+        /// Apply viscosity on vertical walls
+        for (int i = 0; i <= w; i ++) 
+            for (int j = 0; j < h; j ++) {
+                next_field.get_u(i, j) = vf.get_u(i, j) + timestep * viscosity_ * vf.get_u_laplacian(i, j);
+            }
+
+        /// Apply viscosity on horizontal walls
+        for (int i = 0; i < w; i ++) 
+            for (int j = 0; j <= h; j ++) {
+                next_field.get_v(i, j) = vf.get_v(i, j) + timestep * viscosity_ * vf.get_v_laplacian(i, j);
+            }
+
+        vf = std::move(next_field);
     }
 
     Grid& Simulator::grid() {
