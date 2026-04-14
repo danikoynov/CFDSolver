@@ -44,7 +44,7 @@ namespace cfd {
             void apply_boundary_conditions();
             void project(double timestep);
             void apply_viscosity(double timestep);
-            void build_equation(int i, int j, double timestep,
+            std::optional<double> build_equation(int i, int j, double timestep,
                 linalg::LinearOperator& poisson_matrix, linalg::Vector& poisson_rhs);
             void apply_pressure_gradient(double timestep);
             void set_pressure_values(const linalg::Vector& pressure_values);

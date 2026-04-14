@@ -191,7 +191,7 @@ namespace cfd {
         poisson_rhs(cell_id) = val;
     }
 
-    void Simulator::build_equation(int i, int j, double timestep,
+    std::optional<double> Simulator::build_equation(int i, int j, double timestep,
                 linalg::LinearOperator& poisson_matrix, linalg::Vector& poisson_rhs) {
         std::size_t h = grid_.height();
         std::size_t w = grid_.width();
@@ -205,18 +205,23 @@ namespace cfd {
         
         std::size_t cell_id = convert_index(i, j);
 
+
         if (bc.type(i, j) == CellType::SOLID) {
             /// We enforce 0 pressure on the solid cells
             poisson_matrix(cell_id, cell_id) = 1;
             poisson_rhs(cell_id) = 0;
-            return;
+            return std::nullopt;
         }
-  
+
+        if (bc.is_p_prescribed(i, j)) {
+            return bc.prescribed_p(i, j);
+        }
+
         /// Handle edge case with pressure and velocity fixed boundary
         std::optional<double> boundary_constr = get_boundary_pressure_constraint(i , j, timestep);
         
         if (boundary_constr.has_value()) {
-            throw std::runtime_error("Cell pressure is boundary constrined!");
+            return *boundary_constr; /// constrained
         }
 
         double div = vf.get_divergence(i, j);
@@ -276,6 +281,8 @@ namespace cfd {
             double value = factor * (vf.get_v(i, j + 1) - bc.prescribed_v(i, j + 1));
             poisson_rhs(cell_id) += value;
         }
+        
+        return std::nullopt;
     }
 
     void Simulator::apply_pressure_gradient(double timestep) {
@@ -330,7 +337,9 @@ namespace cfd {
 
 
         linalg::Vector poisson_rhs(number_of_cells);
-   
+        
+        std::vector<std::pair<int, double>> constr_cells;
+        
         auto is_edge = [&](int i, int j) { 
             return (bc.type(i - 1, j) == CellType::BOUNDARY ||
                     bc.type(i, j - 1) == CellType::BOUNDARY ||
@@ -341,10 +350,18 @@ namespace cfd {
         bool is_island = true;
         for (int i = 0; i < w; i ++)
             for (int j = 0; j < h; j ++) {
-                build_equation(i, j, timestep, poisson_matrix, poisson_rhs);
-
-                if (bc.type(i, j) == CellType::FLUID && is_edge(i, j))
+                
+                std::optional<double> constr = build_equation(i, j, timestep, poisson_matrix, poisson_rhs);
+                
+                if (bc.type(i, j) == CellType::FLUID && is_edge(i, j)) {
                     is_island = false;
+                }
+                
+                if (constr.has_value()) {
+                    is_island = false;
+                    int cell_id = i * h + j;
+                    constr_cells.push_back({cell_id, *constr});
+                }
             }
         
         if (is_island) {
@@ -355,18 +372,18 @@ namespace cfd {
             for (int i = 0; i < w && !found; i ++)
                 for (int j = 0; j < h && !found; j ++) {
                     if (bc.type(i, j) == CellType::FLUID) {
+                        int cell_id = i * h + j;
+                        constr_cells.push_back({cell_id, 0});
+
                         fix_cell(i * h + j, 0, number_of_cells, 
                             poisson_matrix, poisson_rhs);                        
                         found = true;
                     }
                 }
+        }
 
-            /*
-            /// We add an additional equation (mean pressure value to be 0) to fix solution
-            poisson_rhs(number_of_cells) = 0;
-            for (int i = 0; i < number_of_cells; i ++) // Should apply only for fluid cells but 
-                poisson_matrix(number_of_cells, i) = 1;        // Solid cells have zero pressure
-            */
+        for (const auto& [id, val]: constr_cells) {
+            fix_cell(id, val, number_of_cells, poisson_matrix, poisson_rhs);
         }
 
         poisson_matrix.sterilize(); /// Remove non-zero entries

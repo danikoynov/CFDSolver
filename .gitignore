@@ -2,8 +2,9 @@
 .vscode
 
 # Cmake
-
+tests/Testing
 build/
+Testing
 
 # Docs
 Logbook.txt
