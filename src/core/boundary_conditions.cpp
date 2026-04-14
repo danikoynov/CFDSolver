@@ -48,6 +48,26 @@ namespace cfd {
             prescribed_v_.insert({id, val});
     }
 
+    void BoundaryConditions::prescribe_p_value(int i, int j, double val) {
+        
+        if (i < 0 || i >=  static_cast<int>(width_) ||
+            j < 0 || j >=  static_cast<int>(height_)) {
+            throw std::out_of_range("boundary condition p indexes out of bounds");
+        }
+
+        std::size_t id = 
+            static_cast<std::size_t>(i) * (height_) + 
+            static_cast<std::size_t>(j);
+        
+        bool key_present = prescribed_p_.find(id) != prescribed_p_.end(); 
+        if (key_present && prescribed_p_.at(id) != val) {
+            throw std::runtime_error("boundary condition for p already has a different value prescribed");
+        }
+
+        if (!key_present)   
+            prescribed_p_.insert({id, val});
+    }
+
 
     const std::unordered_map<std::size_t, double>& BoundaryConditions::prescribed_u() const {
         return prescribed_u_;
@@ -56,7 +76,11 @@ namespace cfd {
     const std::unordered_map<std::size_t, double>& BoundaryConditions::prescribed_v() const {
         return prescribed_v_;
     }
-
+    
+    const std::unordered_map<std::size_t, double>& BoundaryConditions::prescribed_p() const {
+        return prescribed_p_;
+    }
+    
     double BoundaryConditions::prescribed_u(int i, int j) const {
         if (i < 0 || i >  static_cast<int>(width_) ||
             j < 0 || j >= static_cast<int>(height_)) {
@@ -83,6 +107,19 @@ namespace cfd {
         return prescribed_v_.at(id);
     }
     
+    double BoundaryConditions::prescribed_p(int i, int j) const {
+        if (i < 0 || i >=  static_cast<int>(width_) ||
+            j < 0 || j >= static_cast<int>(height_)) {
+            throw std::out_of_range("boundary condition p indexes out of bounds");
+        }
+
+        std::size_t id = 
+            static_cast<std::size_t>(i) * (height_) + 
+            static_cast<std::size_t>(j);
+        
+        return prescribed_p_.at(id);
+    }
+
     bool BoundaryConditions::is_u_prescribed(int i, int j) const {
         if (i < 0 || i >  static_cast<int>(width_) ||
             j < 0 || j >= static_cast<int>(height_)) {
@@ -109,6 +146,19 @@ namespace cfd {
         return (prescribed_v_.find(id) != prescribed_v_.end());
     }
     
+    bool BoundaryConditions::is_p_prescribed(int i, int j) const {
+        if (i < 0 || i >= static_cast<int>(width_) ||
+            j < 0 || j >= static_cast<int>(height_)) {
+            throw std::out_of_range("boundary condition p indexes out of bounds");
+        }
+
+        std::size_t id = 
+            static_cast<std::size_t>(i) * (height_) + 
+            static_cast<std::size_t>(j);
+        
+        return (prescribed_p_.find(id) != prescribed_p_.end());
+    }
+
     CellType BoundaryConditions::type(int i, int j) const {
         if (i < 0 || i >=  static_cast<int>(width_) ||
             j < 0 || j >=  static_cast<int>(height_)) {
@@ -134,4 +184,6 @@ namespace cfd {
 
         type_[id] = cell_type;
     }
+
+
 }
