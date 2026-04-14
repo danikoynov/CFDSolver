@@ -15,6 +15,8 @@ add_library(cfd_linalg
     src/linalg/gaussian_elimination.cpp
     src/linalg/matrix.cpp
     src/linalg/vector.cpp
+    src/linalg/linear_operator.cpp
+    src/linalg/conjugate_gradient.cpp
 )
 
 add_library(cfd_core
@@ -52,6 +54,9 @@ add_executable(test_boundary_conditions
 add_executable(test_grid 
     tests/unit_tests/test_grid.cpp
 )
+add_executable(test_cjm 
+    tests/unit_tests/test_cjm.cpp
+)
 
 # Integration tests
 add_executable(test_invariants
@@ -63,6 +68,7 @@ add_executable(test_dynamics
 
 target_link_libraries(cfd_core PUBLIC cfd_linalg)
 target_link_libraries(test_gaussian_elimination PRIVATE cfd_linalg)
+target_link_libraries(test_cjm PRIVATE cfd_linalg)
 target_link_libraries(test_velocity_field PRIVATE cfd_core)
 target_link_libraries(test_pressure_field PRIVATE cfd_core)
 target_link_libraries(test_boundary_conditions PRIVATE cfd_core)
@@ -75,6 +81,10 @@ target_link_libraries(test_dynamics PRIVATE cfd_core)
 add_test(
     NAME test_gaussian_elimination
     COMMAND test_gaussian_elimination
+)
+add_test(
+    NAME test_cjm
+    COMMAND test_cjm
 )
 add_test(
     NAME test_velocity_field
