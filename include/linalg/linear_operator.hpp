@@ -15,9 +15,12 @@ namespace cfd::linalg {
             std::vector<std::vector<std::pair<std::size_t, double>>> dep_;
 
         public:
-        
+            LinearOperator(std::size_t input_size, std::size_t output_size);
             LinearOperator(const Matrix& A);
             Vector apply(const Vector& v) const;
+            double& operator()(int x, int y);
+            const double& operator()(int x, int y) const;
+            void sterilize();
     };
 
 }

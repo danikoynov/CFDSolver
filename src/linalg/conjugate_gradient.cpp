@@ -3,14 +3,13 @@
 
 namespace cfd::linalg {
 
-    Vector conjugate_gradient(const Matrix& A, const Vector& b) {
-        LinearOperator lin_op(A);
+    Vector conjugate_gradient(const LinearOperator& A, const Vector& b) {
 
         Vector x(b.n());
-        Vector r = b - lin_op.apply(x);
+        Vector r = b - A.apply(x);
         Vector p = r;
 
-        const double TOL = 1e-6;
+        const double TOL = 1e-9;
         
         auto within_tolerance = [TOL] (const Vector& v) {
             for (std::size_t i = 0; i < v.n(); i ++) {
@@ -22,7 +21,7 @@ namespace cfd::linalg {
         };
 
         while(!within_tolerance(r)) {
-            Vector Ap = lin_op.apply(p);
+            Vector Ap = A.apply(p);
 
             double rr = Vector::dot(r, r);
             double alpha = rr / Vector::dot(p, Ap);

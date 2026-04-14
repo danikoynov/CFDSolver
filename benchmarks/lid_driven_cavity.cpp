@@ -1,5 +1,6 @@
 #include "core/simulator.hpp"
 #include "core/velocity_field.hpp"
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -14,7 +15,7 @@ constexpr bool DEBUG_PRINT = false;
 
 namespace fs = std::filesystem;
 
-const double CONVERGENCE_TOL = 1e-3;
+const double CONVERGENCE_TOL = 1e-4;
 
 struct Entry {
     double y, val;
@@ -279,10 +280,12 @@ double evaluate_v_error(const cfd::VelocityField& vf,
 void run_test(double re, 
     const std::vector<Entry>& u_entries, const std::vector<Entry>& v_entries) {
     
-    std::size_t width = 30, height = 30;
+    auto start = std::chrono::steady_clock::now();
+
+    std::size_t width = 60, height = 60;
             
-    double len = 1.0; /// Lenght of side
-    double vel = 1.0; /// Lid velocity
+    double len = 1.0;
+    double vel = 1.0;
             
     double viscosity = (len * vel) / re;
     double density = 1.225;
@@ -306,15 +309,18 @@ void run_test(double re,
         if (i % 10 == 0) {
             std::cout<<"Tick: "<<i<<std::endl;
         }
-
     }
 
-    double u_rmse = evaluate_u_error(last_vf, u_entries, height, width, dx); // fix the hor or ver
-    double v_rmse = evaluate_v_error(last_vf, v_entries, height, width, dx); // fix the hor or ver
+    double u_rmse = evaluate_u_error(last_vf, u_entries, height, width, dx);
+    double v_rmse = evaluate_v_error(last_vf, v_entries, height, width, dx);
+    
+    auto end = std::chrono::steady_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
     
     std::cout<<"Benchmark finished"<<std::endl;
     std::cout<<"U RMSE: "<<u_rmse<<std::endl;
     std::cout<<"V RMSE: "<<v_rmse<<std::endl;
+    std::cout<<"Execution time: "<<elapsed.count()<<" s"<<std::endl;
 }
 
 

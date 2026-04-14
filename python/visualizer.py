@@ -74,7 +74,7 @@ class Visualizer:
         length = (dx * dx + dy * dy) ** 0.5
         ux = dx / length
         uy = dy / length
-        ah = 5
+        ah = max(4, 0.25 * length)
 
         left = (x1 - ah * (ux + uy), y1 - ah * (uy - ux))
         right = (x1 - ah * (ux - uy), y1 - ah * (uy + ux))
@@ -104,11 +104,16 @@ class Visualizer:
                 pygame.draw.rect(screen, color, rect)
                 pygame.draw.rect(screen, (40, 40, 40), rect, 1)
 
+        # draw fewer arrows on dense grids
         stride = 1
-        #if w >= 25 or h >= 25:
-        #    stride = 2
-        #if w >= 45 or h >= 45:
-        #    stride = 3
+        if max(w, h) <= 20:
+            stride = 1
+        elif max(w, h) <= 35:
+            stride = 2
+        elif max(w, h) <= 60:
+            stride = 3
+        else:
+            stride = 4
 
         max_speed = 1e-12
         for y in range(0, h, stride):
@@ -117,7 +122,8 @@ class Visualizer:
                 speed = (u * u + v * v) ** 0.5
                 max_speed = max(max_speed, speed)
 
-        arrow_len = 0.38 * cell_size
+        arrow_spacing = stride * cell_size
+        arrow_len = max(8, 0.45 * arrow_spacing)
 
         for y in range(0, h, stride):
             for x in range(0, w, stride):

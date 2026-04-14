@@ -1,5 +1,6 @@
 #include "core/simulator.hpp"
 #include "linalg/gaussian_elimination.hpp"
+#include "linalg/conjugate_gradient.hpp"
 #include <optional>
 #include <stdexcept>
 #include <iostream> /// remove
@@ -168,9 +169,32 @@ namespace cfd {
         return constr;
     }
 
+    void fix_cell(
+        int cell_id,
+        double val,
+        int num_of_cells,
+        linalg::LinearOperator& poisson_matrix,
+        linalg::Vector& poisson_rhs
+    ) {
+        for (int row = 0; row < num_of_cells; row++) {
+            if (row != cell_id) {
+                poisson_rhs(row) -= poisson_matrix(row, cell_id) * val;
+            }
+        }
+
+        for (int id = 0; id < num_of_cells; id++) {
+            poisson_matrix(cell_id, id) = 0;
+            poisson_matrix(id, cell_id) = 0;
+        }
+
+        poisson_matrix(cell_id, cell_id) = 1;
+        poisson_rhs(cell_id) = val;
+    }
+
     void Simulator::build_equation(int i, int j, double timestep,
-                linalg::Matrix& poisson_matrix, linalg::Vector& poisson_rhs) {
+                linalg::LinearOperator& poisson_matrix, linalg::Vector& poisson_rhs) {
         std::size_t h = grid_.height();
+        std::size_t w = grid_.width();
         auto convert_index = [h](std::size_t i, std::size_t j) {
             return i * h + j;
         };
@@ -192,9 +216,7 @@ namespace cfd {
         std::optional<double> boundary_constr = get_boundary_pressure_constraint(i , j, timestep);
         
         if (boundary_constr.has_value()) {
-            poisson_matrix(cell_id, cell_id) = 1;
-            poisson_rhs(cell_id) = *boundary_constr;
-            return;
+            throw std::runtime_error("Cell pressure is boundary constrined!");
         }
 
         double div = vf.get_divergence(i, j);
@@ -302,11 +324,12 @@ namespace cfd {
         int w = grid_.width(), h = grid_.height();
         const auto& bc = grid_.boundary_conditions();
 
-        linalg::Matrix poisson_matrix(           // Each connected island of fluid cells requires
-            number_of_cells + 1, number_of_cells // an additional equation in the system (Neumann problem)
+        linalg::LinearOperator poisson_matrix(           // Each connected island of fluid cells requires
+            number_of_cells, number_of_cells     // an additional constraint in the system (Neumann problem)
         );                                       // Currently, only one island is considered
 
-        linalg::Vector poisson_rhs(number_of_cells + 1);
+
+        linalg::Vector poisson_rhs(number_of_cells);
    
         auto is_edge = [&](int i, int j) { 
             return (bc.type(i - 1, j) == CellType::BOUNDARY ||
@@ -325,13 +348,30 @@ namespace cfd {
             }
         
         if (is_island) {
+
+            /// We choose a fluid cell arbitrarily and fix the pressure to 0
+
+            bool found = false;
+            for (int i = 0; i < w && !found; i ++)
+                for (int j = 0; j < h && !found; j ++) {
+                    if (bc.type(i, j) == CellType::FLUID) {
+                        fix_cell(i * h + j, 0, number_of_cells, 
+                            poisson_matrix, poisson_rhs);                        
+                        found = true;
+                    }
+                }
+
+            /*
             /// We add an additional equation (mean pressure value to be 0) to fix solution
             poisson_rhs(number_of_cells) = 0;
             for (int i = 0; i < number_of_cells; i ++) // Should apply only for fluid cells but 
                 poisson_matrix(number_of_cells, i) = 1;        // Solid cells have zero pressure
+            */
         }
 
-        linalg::Vector pressure_values = linalg::gaussian_elimination(
+        poisson_matrix.sterilize(); /// Remove non-zero entries
+
+        linalg::Vector pressure_values = linalg::conjugate_gradient(
             poisson_matrix, poisson_rhs
         );
 

@@ -5,5 +5,5 @@
 
 namespace cfd::linalg {
 
-    Vector conjugate_gradient(const Matrix& A, const Vector& b);
+    Vector conjugate_gradient(const LinearOperator& A, const Vector& b);
 }

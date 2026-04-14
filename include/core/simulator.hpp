@@ -2,6 +2,7 @@
 #include <optional>
 #include "core/grid.hpp"
 #include "linalg/gaussian_elimination.hpp"
+#include "linalg/linear_operator.hpp"
 #include "linalg/matrix.hpp"
 #include "linalg/vector.hpp"
 
@@ -44,7 +45,7 @@ namespace cfd {
             void project(double timestep);
             void apply_viscosity(double timestep);
             void build_equation(int i, int j, double timestep,
-                linalg::Matrix& poisson_matrix, linalg::Vector& poisson_rhs);
+                linalg::LinearOperator& poisson_matrix, linalg::Vector& poisson_rhs);
             void apply_pressure_gradient(double timestep);
             void set_pressure_values(const linalg::Vector& pressure_values);
             std::optional<double> get_boundary_pressure_constraint(int i, int j, double timestep);
