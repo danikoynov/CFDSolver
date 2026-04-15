@@ -12,12 +12,14 @@ namespace cfd {
     class BoundaryConditions {
         /// Represents the predescribed boundary conditions in the simulation
         
+        const double DEFAULT_PRESSURE = 0.0;
+        
         private:
             std::size_t width_, height_;
             std::vector<CellType> type_; /// Default assigned to fluid
             std::unordered_map<std::size_t, double> prescribed_u_;
             std::unordered_map<std::size_t, double> prescribed_v_;
-            std::unordered_map<std::size_t, double> prescribed_p_;
+            std::unordered_map<int, double> prescribed_p_;
 
         public:
             BoundaryConditions(std::size_t width, std::size_t height);
@@ -33,7 +35,7 @@ namespace cfd {
 
             const std::unordered_map<std::size_t, double>& prescribed_u() const;
             const std::unordered_map<std::size_t, double>& prescribed_v() const;
-            const std::unordered_map<std::size_t, double>& prescribed_p() const;
+            const std::unordered_map<int, double>& prescribed_p() const;
 
             double prescribed_u(int i, int j) const;
             double prescribed_v(int i, int j) const;
