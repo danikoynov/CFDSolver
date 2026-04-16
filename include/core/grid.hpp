@@ -16,7 +16,7 @@ namespace cfd {
         
         public:
             Grid(std::size_t width, std::size_t height, 
-                double resolution, double outside_pressure);
+                double resolution);
 
             VelocityField& velocity() { return velocity_; }
             const VelocityField& velocity() const { return velocity_; } 

@@ -3,10 +3,10 @@
 namespace cfd {
 
     Grid::Grid(std::size_t width, std::size_t height, 
-        double resolution, double outside_pressure):
+        double resolution):
         width_(width), height_(height), resolution_(resolution),
         velocity_(width, height, resolution), 
-        pressure_(width, height, outside_pressure),
+        pressure_(width, height),
         bc_(width, height) {}
         
     

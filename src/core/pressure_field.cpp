@@ -6,12 +6,10 @@ namespace cfd {
 
     PressureField::PressureField(
         std::size_t width,
-        std::size_t height,
-        double outside_pressure
+        std::size_t height
     )
         : width_(width),
         height_(height),
-        outside_pressure_(outside_pressure),
         p_(width * height) {}
 
     void PressureField::check_bounds(int i, int j) const {
@@ -44,13 +42,6 @@ namespace cfd {
                 static_cast<std::size_t>(j);
                 
         return p_[id];
-    }
-
-
-    double PressureField::outside_pressure() const {
-        // Returns the prescribed outside pressure value.
-       
-        return outside_pressure_;
     }
 
 }  

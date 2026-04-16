@@ -33,23 +33,33 @@ namespace cfd {
             bool apply_gravity_;
 
         public:
-            Simulator(std::size_t width, std::size_t height, 
-                double resolution, double outside_pressure, 
-                double fluid_density, bool apply_gravity,
+            Simulator(
+                std::size_t width, 
+                std::size_t height, 
+                double resolution, 
+                double fluid_density, 
+                bool apply_gravity,
                 double viscosity);
 
             double determine_timestep() const;
+            void apply_boundary_conditions();
+            
+            void apply_viscosity(double timestep);
+
             void advect(double timestep);
             void apply_body_forces(double timestpe, double ax, double ay);
-            void apply_boundary_conditions();
+
             void project(double timestep);
-            void apply_viscosity(double timestep);
             std::optional<double> build_equation(int i, int j, double timestep,
                 linalg::LinearOperator& poisson_matrix, linalg::Vector& poisson_rhs);
+            
             void apply_pressure_gradient(double timestep);
             void set_pressure_values(const linalg::Vector& pressure_values);
+            double get_pressure(int i, int j);
             std::optional<double> get_boundary_pressure_constraint(int i, int j, double timestep);
+            
             void tick();
+            
             const Grid& grid() const;
             Grid& grid();
     };

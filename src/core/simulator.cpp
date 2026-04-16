@@ -3,171 +3,226 @@
 #include "linalg/conjugate_gradient.hpp"
 #include <optional>
 #include <stdexcept>
-#include <iostream> /// remove
+#include <iostream>
 
 namespace cfd {
 
-    Simulator::Simulator(std::size_t width, std::size_t height,
-        double resolution, double outside_pressure, double fluid_density,
-        bool apply_gravity, double viscosity):
-        grid_(width, height, resolution, outside_pressure), 
-        fluid_density_(fluid_density), apply_gravity_(apply_gravity),
-        viscosity_(viscosity) {}
+Simulator::Simulator(std::size_t width,
+                     std::size_t height,
+                     double resolution,
+                     double fluid_density,
+                     bool apply_gravity,
+                     double viscosity)
+    : grid_(width, height, resolution),
+      fluid_density_(fluid_density),
+      apply_gravity_(apply_gravity),
+      viscosity_(viscosity) {}
 
     double Simulator::determine_timestep() const {
-        double max_vel = grid_.velocity().get_max_velocity_component();
-        double dx = grid_.resolution();
+        /// Determine timestep using CFL condition
+
+        const double max_velocity = grid_.velocity().get_max_velocity_component();
+        const double dx = grid_.resolution();
 
         double advective_dt = FALLBACK_MAX_TIMESTEP;
-        if (max_vel > 0.0)
-            advective_dt = CFL * dx / max_vel;
+        if (max_velocity > 0.0) {
+            advective_dt = CFL * dx / max_velocity;
+        }
 
         double diffusive_dt = FALLBACK_MAX_TIMESTEP;
-        if (viscosity_ > 0.0)
+        if (viscosity_ > 0.0) {
             diffusive_dt = 0.25 * dx * dx / viscosity_;
+        }
 
-        return std::min(FALLBACK_MAX_TIMESTEP, std::min(advective_dt, diffusive_dt));
+        return std::min(
+            FALLBACK_MAX_TIMESTEP,
+            std::min(advective_dt, diffusive_dt)
+        );
     }
 
     void Simulator::advect(double timestep) {
-        /// Performs Semi-Lagrangian advection on the velocity field
-        const auto& old_vel = grid_.velocity();
-        const std::size_t w = grid_.width();
-        const std::size_t h = grid_.height();
+        // Perform semi-Lagrangian advection on the velocity field.
+
+        const auto& old_velocity = grid_.velocity();
+        const std::size_t width = grid_.width();
+        const std::size_t height = grid_.height();
         const double dx = grid_.resolution();
 
-        VelocityField next_field(w, h, dx);
+        VelocityField next_velocity(width, height, dx);
 
-        /// Advect vertical faces
-        for (std::size_t i = 0; i <= w; i ++)
-            for (std::size_t j = 0; j < h; j ++) {
-                auto velocity = old_vel.sample_at_vertical_face(i, j);
+        // Advect vertical faces.
+        for (std::size_t i = 0; i <= width; i++) {
+            for (std::size_t j = 0; j < height; j++) {
+                const auto velocity = old_velocity.sample_at_vertical_face(i, j);
 
-                double cur_x = static_cast<double>(i) * dx;
-                double cur_y = (static_cast<double>(j) + 0.5) * dx;
-                
-                double prev_x = cur_x - timestep * velocity.u;
-                double prev_y = cur_y - timestep * velocity.v;
+                const double x = static_cast<double>(i) * dx;
+                const double y = (static_cast<double>(j) + 0.5) * dx;
 
-                auto new_velocity = old_vel.sample_at_coordinates(prev_x, prev_y);
+                const double previous_x = x - timestep * velocity.u;
+                const double previous_y = y - timestep * velocity.v;
 
-                next_field.get_u(i, j) = new_velocity.u;
+                const auto advected_velocity =
+                    old_velocity.sample_at_coordinates(previous_x, previous_y);
+
+                next_velocity.get_u(i, j) = advected_velocity.u;
             }
+        }
 
-        /// Advect horizontal faces
-        for (std::size_t i = 0; i < w; i ++)
-            for (std::size_t j = 0; j <= h; j ++) {
-                auto velocity = old_vel.sample_at_horizontal_face(i, j);
+        // Advect horizontal faces.
+        for (std::size_t i = 0; i < width; i++) {
+            for (std::size_t j = 0; j <= height; j++) {
+                const auto velocity = old_velocity.sample_at_horizontal_face(i, j);
 
-                double cur_x = (static_cast<double>(i) + 0.5) * dx;
-                double cur_y = (static_cast<double>(j)) * dx;
-                
-                double prev_x = cur_x - timestep * velocity.u;
-                double prev_y = cur_y - timestep * velocity.v;
+                const double x = (static_cast<double>(i) + 0.5) * dx;
+                const double y = static_cast<double>(j) * dx;
 
-                auto new_velocity = old_vel.sample_at_coordinates(prev_x, prev_y);
+                const double previous_x = x - timestep * velocity.u;
+                const double previous_y = y - timestep * velocity.v;
 
-                next_field.get_v(i, j) = new_velocity.v;
-            }    
-        
-        grid_.velocity() = std::move(next_field);
+                const auto advected_velocity =
+                    old_velocity.sample_at_coordinates(previous_x, previous_y);
+
+                next_velocity.get_v(i, j) = advected_velocity.v;
+            }
+        }
+
+        grid_.velocity() = std::move(next_velocity);
     }
 
     void Simulator::apply_body_forces(double timestep, double ax, double ay) {
-        auto& velocity = grid_.velocity();
-        const std::size_t w = grid_.width();
-        const std::size_t h = grid_.height();
+        /// Apply body forces on the velocity field
 
-        /// Apply on vertical faces
-        for (std::size_t i = 0; i <= w; i ++)
-            for (std::size_t j = 0; j < h; j ++) {
+        auto& velocity = grid_.velocity();
+        const std::size_t width = grid_.width();
+        const std::size_t height = grid_.height();
+
+        // Apply on vertical faces.
+        for (std::size_t i = 0; i <= width; i++) {
+            for (std::size_t j = 0; j < height; j++) {
                 velocity.get_u(i, j) += timestep * ax;
             }
+        }
 
-        /// Apply on horizontal faces
-        for (std::size_t i = 0; i < w; i ++)
-            for (std::size_t j = 0; j <= h; j ++) {
+        // Apply on horizontal faces.
+        for (std::size_t i = 0; i < width; i++) {
+            for (std::size_t j = 0; j <= height; j++) {
                 velocity.get_v(i, j) += timestep * ay;
             }
+        }
     }
 
     void Simulator::apply_boundary_conditions() {
-        const auto& bc = grid_.boundary_conditions();
+        /// Apply boundary conditions on the velocity field
 
-        const auto& prescribed_u = bc.prescribed_u();
-        const auto& prescribed_v = bc.prescribed_v();
+        const auto& boundary_conditions = grid_.boundary_conditions();
+        auto& velocity = grid_.velocity();
+
+        const auto& prescribed_u = boundary_conditions.prescribed_u();
+        const auto& prescribed_v = boundary_conditions.prescribed_v();
+
+        const std::size_t height = grid_.height();
 
         for (const auto& [key, value] : prescribed_u) {
-            std::size_t i = key / (grid_.height());
-            std::size_t j = key % (grid_.height());
+            const std::size_t i = key / height;
+            const std::size_t j = key % height;
 
-            grid_.velocity().get_u(i, j) = value;
+            velocity.get_u(i, j) = value;
         }
 
         for (const auto& [key, value] : prescribed_v) {
-            std::size_t i = key / (grid_.height() + 1);
-            std::size_t j = key % (grid_.height() + 1);
-            
-            grid_.velocity().get_v(i, j) = value;
+            const std::size_t i = key / (height + 1);
+            const std::size_t j = key % (height + 1);
+
+            velocity.get_v(i, j) = value;
         }
     }
 
-    std::optional<double> Simulator::get_boundary_pressure_constraint(int i, int j, double timestep) {
+    std::optional<double> Simulator::get_boundary_pressure_constraint(
+        int i,
+        int j,
+        double timestep
+    ) {
+        // If a face between a boundary and a cell has a prescribed velocity
+        // it imposes a fixed pressure constraint on the cell
+        
         const auto& bc = grid_.boundary_conditions();
         const auto& vf = grid_.velocity();
-        const auto& pf = grid_.pressure();
-        
-        std::optional<double> constr;
-        
-        auto add_pressure_constraint = [&](double p) {
-            if (!constr.has_value()) {
-                constr = p;
+
+        std::optional<double> constraint;
+
+        auto add_pressure_constraint = [&](double pressure) {
+            if (!constraint.has_value()) {
+                constraint = pressure;
                 return;
             }
 
-            if (std::abs(*constr - p) > TOL) {
+            if (std::abs(*constraint - pressure) > TOL) {
                 throw std::runtime_error(
                     "Incompatible pressure/boundary conditions:\n"
                     "cell pressure is overconstrained"
                 );
             }
         };
-        
-        /**std::cout<<"Cell: " << i << " | " << j << " LEFT: ";
-        if (bc.type(i - 1, j) == CellType::BOUNDARY)
-            std::cout << "Boundary" << std::endl;
-        else if (bc.type(i - 1, j) == CellType::SOLID)
-            std::cout << "Solid" << std::endl;
-        else if (bc.type(i - 1, j) == CellType::FLUID)
-            std::cout << "Fluid" << std::endl;*/
 
-        const double factor = fluid_density_ * grid_.resolution() / timestep; 
-        if (bc.type(i - 1, j) == CellType::BOUNDARY && bc.is_u_prescribed(i, j)) {
-            double cell_pressure = pf.outside_pressure() + 
+        const double factor = fluid_density_ * grid_.resolution() / timestep;
+
+        if (bc.type(i - 1, j) == CellType::BOUNDARY &&
+            bc.is_u_prescribed(i, j)) {
+            const double cell_pressure =
+                bc.prescribed_p(i - 1, j) +
                 factor * (vf.get_u(i, j) - bc.prescribed_u(i, j));
+
             add_pressure_constraint(cell_pressure);
         }
 
-        if (bc.type(i, j - 1) == CellType::BOUNDARY && bc.is_v_prescribed(i, j)) {
-            double cell_pressure = pf.outside_pressure() + 
+        if (bc.type(i, j - 1) == CellType::BOUNDARY &&
+            bc.is_v_prescribed(i, j)) {
+            const double cell_pressure =
+                bc.prescribed_p(i, j - 1) +
                 factor * (vf.get_v(i, j) - bc.prescribed_v(i, j));
+
             add_pressure_constraint(cell_pressure);
         }
 
-        if (bc.type(i + 1, j) == CellType::BOUNDARY && bc.is_u_prescribed(i + 1, j)) {
-            double cell_pressure = pf.outside_pressure() - 
+        if (bc.type(i + 1, j) == CellType::BOUNDARY &&
+            bc.is_u_prescribed(i + 1, j)) {
+            const double cell_pressure =
+                bc.prescribed_p(i + 1, j) -
                 factor * (vf.get_u(i + 1, j) - bc.prescribed_u(i + 1, j));
+
             add_pressure_constraint(cell_pressure);
         }
 
-        if (bc.type(i, j + 1) == CellType::BOUNDARY && bc.is_v_prescribed(i, j + 1)) {
-            double cell_pressure = pf.outside_pressure() - 
+        if (bc.type(i, j + 1) == CellType::BOUNDARY &&
+            bc.is_v_prescribed(i, j + 1)) {
+            const double cell_pressure =
+                bc.prescribed_p(i, j + 1) -
                 factor * (vf.get_v(i, j + 1) - bc.prescribed_v(i, j + 1));
+
             add_pressure_constraint(cell_pressure);
         }
 
-        return constr;
+        return constraint;
     }
+
+    double Simulator::get_pressure(int i, int j) {
+        // Return the pressure in cell [i, j]
+        // The cell could be of type boundary
+
+        int width = static_cast<int>(grid_.width());
+        int height = static_cast<int>(grid_.height());
+
+        const auto& bc = grid_.boundary_conditions();
+        const auto& pf = grid_.pressure();
+
+        if (i < 0 || i >= width ||
+            j < 0 || j >= height) {
+                return bc.prescribed_p(i, j); 
+            }
+        
+        return pf.get_p(i, j);
+    }
+    
 
     void fix_cell(
         int cell_id,
@@ -176,6 +231,9 @@ namespace cfd {
         linalg::LinearOperator& poisson_matrix,
         linalg::Vector& poisson_rhs
     ) {
+        // Fixes the pressure of a cell to a given value
+        // in the poisson set of equations
+
         for (int row = 0; row < num_of_cells; row++) {
             if (row != cell_id) {
                 poisson_rhs(row) -= poisson_matrix(row, cell_id) * val;
@@ -191,23 +249,29 @@ namespace cfd {
         poisson_rhs(cell_id) = val;
     }
 
-    std::optional<double> Simulator::build_equation(int i, int j, double timestep,
-                linalg::LinearOperator& poisson_matrix, linalg::Vector& poisson_rhs) {
-        std::size_t h = grid_.height();
-        std::size_t w = grid_.width();
-        auto convert_index = [h](std::size_t i, std::size_t j) {
+    std::optional<double> Simulator::build_equation(
+        int i,
+        int j,
+        double timestep,
+        linalg::LinearOperator& poisson_matrix,
+        linalg::Vector& poisson_rhs
+    ) {
+        // Build the equation for cell [i, j]
+        
+        const std::size_t h = grid_.height();
+
+        auto cell_index = [h](std::size_t i, std::size_t j) {
             return i * h + j;
         };
 
         const auto& bc = grid_.boundary_conditions();
         const auto& vf = grid_.velocity();
-        const auto& pf = grid_.pressure();
-        
-        std::size_t cell_id = convert_index(i, j);
 
+        const std::size_t cell_id =
+            cell_index(static_cast<std::size_t>(i), static_cast<std::size_t>(j));
 
         if (bc.type(i, j) == CellType::SOLID) {
-            /// We enforce 0 pressure on the solid cells
+            // Enforce zero pressure on solid cells.
             poisson_matrix(cell_id, cell_id) = 1;
             poisson_rhs(cell_id) = 0;
             return std::nullopt;
@@ -217,187 +281,190 @@ namespace cfd {
             return bc.prescribed_p(i, j);
         }
 
-        /// Handle edge case with pressure and velocity fixed boundary
-        std::optional<double> boundary_constr = get_boundary_pressure_constraint(i , j, timestep);
-        
-        if (boundary_constr.has_value()) {
-            return *boundary_constr; /// constrained
+        const std::optional<double> boundary_constraint =
+            get_boundary_pressure_constraint(i, j, timestep);
+
+        if (boundary_constraint.has_value()) {
+            return *boundary_constraint;
         }
 
-        double div = vf.get_divergence(i, j);
+        const double div = vf.get_divergence(i, j);
 
-        poisson_rhs(cell_id) = 
-            - (fluid_density_ * grid_.resolution() * grid_.resolution() * div) / timestep; // baseline RHS
-        
-        const double factor = (fluid_density_ * grid_.resolution() / timestep);
+        poisson_rhs(cell_id) =
+            -(fluid_density_ * grid_.resolution() * grid_.resolution() * div) /
+            timestep;
+
+        const double factor = fluid_density_ * grid_.resolution() / timestep;
+
         if (bc.type(i - 1, j) == CellType::FLUID) {
-            poisson_matrix(cell_id, cell_id) ++;
-            poisson_matrix(cell_id, convert_index(i - 1, j)) --;
-        }
-        else if (bc.type(i - 1, j) == CellType::BOUNDARY) {
-            poisson_matrix(cell_id, cell_id) ++;
-            poisson_rhs(cell_id) += pf.outside_pressure();
-        }
-        else if (bc.type(i - 1, j) == CellType::SOLID) {
-            double value = - factor * (vf.get_u(i, j) - bc.prescribed_u(i, j));
+            poisson_matrix(cell_id, cell_id)++;
+            poisson_matrix(cell_id, cell_index(i - 1, j))--;
+        } else if (bc.type(i - 1, j) == CellType::BOUNDARY) {
+            poisson_matrix(cell_id, cell_id)++;
+            poisson_rhs(cell_id) += bc.prescribed_p(i - 1, j);
+        } else if (bc.type(i - 1, j) == CellType::SOLID) {
+            const double value = -factor * (vf.get_u(i, j) - bc.prescribed_u(i, j));
             poisson_rhs(cell_id) += value;
         }
 
         if (bc.type(i + 1, j) == CellType::FLUID) {
-            poisson_matrix(cell_id, cell_id) ++;
-            poisson_matrix(cell_id, convert_index(i + 1, j)) --;
-        }
-        else if (bc.type(i + 1, j) == CellType::BOUNDARY) {
-            poisson_matrix(cell_id, cell_id) ++;
-            poisson_rhs(cell_id) += pf.outside_pressure();
-        }
-        else if (bc.type(i + 1, j) == CellType::SOLID) {
-            double value = factor * (vf.get_u(i + 1, j) - bc.prescribed_u(i + 1, j));
+            poisson_matrix(cell_id, cell_id)++;
+            poisson_matrix(cell_id, cell_index(i + 1, j))--;
+        } else if (bc.type(i + 1, j) == CellType::BOUNDARY) {
+            poisson_matrix(cell_id, cell_id)++;
+            poisson_rhs(cell_id) += bc.prescribed_p(i + 1, j);
+        } else if (bc.type(i + 1, j) == CellType::SOLID) {
+            const double value = factor * (vf.get_u(i + 1, j) - bc.prescribed_u(i + 1, j));
             poisson_rhs(cell_id) += value;
         }
 
         if (bc.type(i, j - 1) == CellType::FLUID) {
-            poisson_matrix(cell_id, cell_id) ++;
-            poisson_matrix(cell_id, convert_index(i, j - 1)) --;
-        }
-        else if (bc.type(i, j - 1) == CellType::BOUNDARY) {
-            poisson_matrix(cell_id, cell_id) ++;
-            poisson_rhs(cell_id) += pf.outside_pressure();
-        }
-        else if (bc.type(i, j - 1) == CellType::SOLID) {
-            double value = - factor * (vf.get_v(i, j) - bc.prescribed_v(i, j));
+            poisson_matrix(cell_id, cell_id)++;
+            poisson_matrix(cell_id, cell_index(i, j - 1))--;
+        } else if (bc.type(i, j - 1) == CellType::BOUNDARY) {
+            poisson_matrix(cell_id, cell_id)++;
+            poisson_rhs(cell_id) += bc.prescribed_p(i, j - 1);
+        } else if (bc.type(i, j - 1) == CellType::SOLID) {
+            const double value = -factor * (vf.get_v(i, j) - bc.prescribed_v(i, j));
             poisson_rhs(cell_id) += value;
         }
 
         if (bc.type(i, j + 1) == CellType::FLUID) {
-            poisson_matrix(cell_id, cell_id) ++;
-            poisson_matrix(cell_id, convert_index(i, j + 1)) --;
-        }
-        else if (bc.type(i, j + 1) == CellType::BOUNDARY) {
-            poisson_matrix(cell_id, cell_id) ++;
-            poisson_rhs(cell_id) += pf.outside_pressure();
-        }
-        else if (bc.type(i, j + 1) == CellType::SOLID) {
-            double value = factor * (vf.get_v(i, j + 1) - bc.prescribed_v(i, j + 1));
+            poisson_matrix(cell_id, cell_id)++;
+            poisson_matrix(cell_id, cell_index(i, j + 1))--;
+        } else if (bc.type(i, j + 1) == CellType::BOUNDARY) {
+            poisson_matrix(cell_id, cell_id)++;
+            poisson_rhs(cell_id) += bc.prescribed_p(i, j + 1);
+        } else if (bc.type(i, j + 1) == CellType::SOLID) {
+            const double value = factor * (vf.get_v(i, j + 1) - bc.prescribed_v(i, j + 1));
             poisson_rhs(cell_id) += value;
         }
-        
+
         return std::nullopt;
     }
 
     void Simulator::apply_pressure_gradient(double timestep) {
-        std::size_t w = grid_.width(), h = grid_.height();
-        const auto& pf = grid_.pressure();
+        const std::size_t w = grid_.width();
+        const std::size_t h = grid_.height();
         auto& vf = grid_.velocity();
 
         const double factor = timestep / (fluid_density_ * grid_.resolution());
 
-        /// Apply pressure gradient across vertical faces
-        for (int i = 0; i <= w; i ++) 
-            for (int j = 0; j < h; j ++) {
-                double delta_pressure = 
-                    pf.read_p_or_outside(i, j) - pf.read_p_or_outside(i - 1, j);
+        // Apply pressure gradient across vertical faces.
+        for (int i = 0; i <= w; i++) {
+            for (int j = 0; j < h; j++) {
+                const double delta_pressure =
+                    get_pressure(i, j) - get_pressure(i - 1, j);
+
                 vf.get_u(i, j) -= factor * delta_pressure;
             }
-        
-        /// Apply pressure gradient across horizontal faces
-        for (int i = 0; i < w; i ++) 
-            for (int j = 0; j <= h; j ++) {
-                double delta_pressure = 
-                    pf.read_p_or_outside(i, j) - pf.read_p_or_outside(i, j - 1);
+        }
+
+        // Apply pressure gradient across horizontal faces.
+        for (int i = 0; i < w; i++) {
+            for (int j = 0; j <= h; j++) {
+                const double delta_pressure =
+                    get_pressure(i, j) - get_pressure(i, j - 1);
+
                 vf.get_v(i, j) -= factor * delta_pressure;
             }
+        }
     }
 
     void Simulator::set_pressure_values(const linalg::Vector& pressure_values) {
-        int w = grid_.width(), h = grid_.height();
+        const int w = grid_.width();
+        const int h = grid_.height();
         auto& pf = grid_.pressure();
 
-        for (int i = 0; i < w; i ++)
-            for (int j = 0; j < h; j ++) {
-                std::size_t id = static_cast<std::size_t>(i) * h + 
-                                    static_cast<std::size_t>(j);
+        for (int i = 0; i < w; i++) {
+            for (int j = 0; j < h; j++) {
+                const std::size_t id =
+                    static_cast<std::size_t>(i) * h +
+                    static_cast<std::size_t>(j);
+
                 pf.get_p(i, j) = pressure_values(id);
             }
+        }
     }
 
     void Simulator::project(double timestep) {
-        /* Determine the pressure in all cells of the grid to 
-         * make the velocity field divergence free, taking
-         * into account the boundary condtions.
-         */
+        /* Determine the pressure in all cells of the grid to
+        * make the velocity field divergence free, taking
+        * into account the boundary conditions.
+        */
 
-        int number_of_cells = grid_.width() * grid_.height();
-        int w = grid_.width(), h = grid_.height();
+        const int number_of_cells = grid_.width() * grid_.height();
+        const int w = grid_.width();
+        const int h = grid_.height();
         const auto& bc = grid_.boundary_conditions();
 
-        linalg::LinearOperator poisson_matrix(           // Each connected island of fluid cells requires
-            number_of_cells, number_of_cells     // an additional constraint in the system (Neumann problem)
-        );                                       // Currently, only one island is considered
-
-
+        // Each connected island of fluid cells requires an additional
+        // constraint in the system (Neumann problem). Currently, only
+        // one island is considered.
+        linalg::LinearOperator poisson_matrix(number_of_cells, number_of_cells);
         linalg::Vector poisson_rhs(number_of_cells);
-        
-        std::vector<std::pair<int, double>> constr_cells;
-        
-        auto is_edge = [&](int i, int j) { 
-            return (bc.type(i - 1, j) == CellType::BOUNDARY ||
-                    bc.type(i, j - 1) == CellType::BOUNDARY ||
-                    bc.type(i + 1, j) == CellType::BOUNDARY ||
-                    bc.type(i, j + 1) == CellType::BOUNDARY);
+
+        std::vector<std::pair<int, double>> constrained_cells;
+
+        auto is_edge = [&](int i, int j) {
+            return (
+                bc.type(i - 1, j) == CellType::BOUNDARY ||
+                bc.type(i, j - 1) == CellType::BOUNDARY ||
+                bc.type(i + 1, j) == CellType::BOUNDARY ||
+                bc.type(i, j + 1) == CellType::BOUNDARY
+            );
         };
-        
+
         bool is_island = true;
-        for (int i = 0; i < w; i ++)
-            for (int j = 0; j < h; j ++) {
-                
-                std::optional<double> constr = build_equation(i, j, timestep, poisson_matrix, poisson_rhs);
-                
+
+        for (int i = 0; i < w; i++)
+            for (int j = 0; j < h; j++) {
+                const std::optional<double> constraint =
+                    build_equation(i, j, timestep, poisson_matrix, poisson_rhs);
+
                 if (bc.type(i, j) == CellType::FLUID && is_edge(i, j)) {
                     is_island = false;
                 }
-                
-                if (constr.has_value()) {
+
+                if (constraint.has_value()) {
                     is_island = false;
-                    int cell_id = i * h + j;
-                    constr_cells.push_back({cell_id, *constr});
+
+                    const int cell_id = i * h + j;
+                    constrained_cells.push_back({cell_id, *constraint});
                 }
             }
-        
+
         if (is_island) {
-
-            /// We choose a fluid cell arbitrarily and fix the pressure to 0
-
+            // Choose a fluid cell arbitrarily and fix its pressure to zero.
             bool found = false;
-            for (int i = 0; i < w && !found; i ++)
-                for (int j = 0; j < h && !found; j ++) {
-                    if (bc.type(i, j) == CellType::FLUID) {
-                        int cell_id = i * h + j;
-                        constr_cells.push_back({cell_id, 0});
 
-                        fix_cell(i * h + j, 0, number_of_cells, 
-                            poisson_matrix, poisson_rhs);                        
+            for (int i = 0; i < w && !found; i++)
+                for (int j = 0; j < h && !found; j++) {
+                    if (bc.type(i, j) == CellType::FLUID) {
+                        const int cell_id = i * h + j;
+                        constrained_cells.push_back({cell_id, 0.0});
+
+                        fix_cell(cell_id, 0.0, number_of_cells, poisson_matrix, poisson_rhs);
                         found = true;
                     }
                 }
         }
 
-        for (const auto& [id, val]: constr_cells) {
-            fix_cell(id, val, number_of_cells, poisson_matrix, poisson_rhs);
+        for (const auto& [id, value] : constrained_cells) {
+            fix_cell(id, value, number_of_cells, poisson_matrix, poisson_rhs);
         }
 
-        poisson_matrix.sterilize(); /// Remove non-zero entries
+        poisson_matrix.sterilize(); // Remove zero entries.
 
-        linalg::Vector pressure_values = linalg::conjugate_gradient(
-            poisson_matrix, poisson_rhs
-        );
+        linalg::Vector pressure_values =
+            linalg::conjugate_gradient(poisson_matrix, poisson_rhs);
 
         set_pressure_values(pressure_values);
         apply_pressure_gradient(timestep);
     }
 
     void Simulator::tick() {
-        double timestep = determine_timestep();
+        const double timestep = determine_timestep();
         
         advect(timestep);
         apply_boundary_conditions();
@@ -415,29 +482,31 @@ namespace cfd {
     }
 
     void Simulator::apply_viscosity(double timestep) {
-        std::size_t h = grid_.height();
-        std::size_t w = grid_.width();
+        const std::size_t h = grid_.height();
+        const std::size_t w = grid_.width();
 
         auto& vf = grid_.velocity();
         const double dx = grid_.resolution();
 
         VelocityField next_field(w, h, dx);
 
-        /// Apply viscosity on vertical walls
-        for (int i = 0; i <= w; i ++) 
-            for (int j = 0; j < h; j ++) {
-                next_field.get_u(i, j) = vf.get_u(i, j) + timestep * viscosity_ * vf.get_u_laplacian(i, j);
+        // Apply viscosity on vertical faces.
+        for (int i = 0; i <= w; i++)
+            for (int j = 0; j < h; j++) {
+                next_field.get_u(i, j) =
+                    vf.get_u(i, j) + timestep * viscosity_ * vf.get_u_laplacian(i, j);
             }
 
-        /// Apply viscosity on horizontal walls
-        for (int i = 0; i < w; i ++) 
-            for (int j = 0; j <= h; j ++) {
-                next_field.get_v(i, j) = vf.get_v(i, j) + timestep * viscosity_ * vf.get_v_laplacian(i, j);
+        // Apply viscosity on horizontal faces.
+        for (int i = 0; i < w; i++)
+            for (int j = 0; j <= h; j++) {
+                next_field.get_v(i, j) =
+                    vf.get_v(i, j) + timestep * viscosity_ * vf.get_v_laplacian(i, j);
             }
 
         vf = std::move(next_field);
     }
-
+    
     Grid& Simulator::grid() {
         return grid_;
     }
