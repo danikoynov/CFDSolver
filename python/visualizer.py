@@ -19,7 +19,7 @@ class Visualizer:
     SOLID_COLOR = (120, 120, 120)
     BACKGROUND_COLOR = (20, 20, 20)
     ARROW_COLOR = (255, 255, 255)
-    TEXT_COLOR = (255, 255, 255)
+    TEXT_COLOR = (0, 200, 230)
     GRID_LINE_COLOR = (80, 80, 80)  # thin grid line color
 
     def __init__(
