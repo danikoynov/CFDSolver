@@ -7,7 +7,7 @@
 
 namespace cfd {
 
-Simulator::Simulator(std::size_t width,
+    Simulator::Simulator(std::size_t width,
                      std::size_t height,
                      double resolution,
                      double fluid_density,
@@ -506,7 +506,7 @@ Simulator::Simulator(std::size_t width,
 
         vf = std::move(next_field);
     }
-    
+
     Grid& Simulator::grid() {
         return grid_;
     }
