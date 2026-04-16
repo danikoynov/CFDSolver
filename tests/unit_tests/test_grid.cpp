@@ -15,7 +15,7 @@ namespace {
     }
 
     void test_grid_dimensions() {
-        Grid grid(5, 4, 1.0, 101325.0);
+        Grid grid(5, 4, 1.0);
 
         require(
             grid.width() == 5,
@@ -28,7 +28,7 @@ namespace {
     }
 
     void test_velocity_accessor_is_usable() {
-        Grid grid(3, 2, 1.0, 101325.0);
+        Grid grid(3, 2, 1.0);
 
         grid.velocity().get_u(0, 0) = 2.5;
         grid.velocity().get_v(1, 1) = -1.0;
@@ -44,7 +44,7 @@ namespace {
     }
 
     void test_pressure_accessor_is_usable() {
-        Grid grid(4, 3, 1.0, 101325.0);
+        Grid grid(4, 3, 1.0);
 
         grid.pressure().get_p(1, 2) = 42.0;
 
@@ -55,7 +55,7 @@ namespace {
     }
 
     void test_boundary_conditions_accessor_is_usable() {
-        Grid grid(3, 3, 1.0, 101325.0);
+        Grid grid(3, 3, 1.0);
 
         grid.boundary_conditions().prescribe_u_value(0, 1, 5.0);
 
@@ -66,7 +66,7 @@ namespace {
     }
 
     void test_const_accessors_are_usable() {
-        Grid grid(2, 2, 1.0, 101325.0);
+        Grid grid(2, 2, 1.0);
 
         grid.velocity().get_u(0, 0) = 3.0;
         grid.pressure().get_p(1, 1) = 7.0;
