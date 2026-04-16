@@ -282,7 +282,7 @@ void run_test(double re,
     
     auto start = std::chrono::steady_clock::now();
 
-    std::size_t width = 60, height = 60;
+    std::size_t width = 50, height = 50;
             
     double len = 1.0;
     double vel = 1.0;
@@ -291,8 +291,8 @@ void run_test(double re,
     double density = 1.225;
     double dx = len / static_cast<double>(height);
 
-    cfd::Simulator sim = cfd::Simulator(width, height,
-        dx, 0, density, false, viscosity);
+    cfd::Simulator sim(width, height,
+        dx, density, false, viscosity);
     
     apply_lid_driven_bc(sim, vel);
 

@@ -25,7 +25,7 @@ from visualizer import Visualizer
 # "visualizer" -> run pygame visualizer
 # "profile"    -> run simulation and plot centerline profiles
 # --------------------------------------------------
-RUN_MODE = "visualize"
+RUN_MODE = "visualizer"
 
 
 def impose_boundary_conditions(sim: cfdsolver_py.Simulator, lid_velocity: float):
@@ -119,8 +119,8 @@ if __name__ == "__main__":
     Re = 100
     viscosity = length * lid_velocity / Re
 
-    grid_w = 60
-    grid_h = 60
+    grid_w = 70
+    grid_h = 70
     cell_size = 10
 
     dx = length / grid_w
