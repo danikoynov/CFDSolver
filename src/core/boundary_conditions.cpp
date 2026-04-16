@@ -260,5 +260,20 @@ namespace cfd {
         type_[id] = cell_type;
     }
 
+    bool BoundaryConditions::is_solid(int i, int j) const {
+        
+        const int width = static_cast<int>(width_);
+        const int height = static_cast<int>(height_);
 
+        if (i < 0 || i >= width ||
+            j < 0 || j >= height) {
+            throw std::out_of_range("indexes out of bounds while checking for solid cell");
+        }
+
+        const std::size_t id =
+            static_cast<std::size_t>(i) * height_ +
+            static_cast<std::size_t>(j);
+
+        return (type_[id] == CellType::SOLID);
+    }
 }

@@ -26,7 +26,8 @@ PYBIND11_MODULE(cfdsolver_py, m) {
         .def("prescribed_v", py::overload_cast<int, int>(&cfd::BoundaryConditions::prescribed_v, py::const_))
         .def("prescribed_p", py::overload_cast<int, int>(&cfd::BoundaryConditions::prescribed_p, py::const_))
         .def("type", &cfd::BoundaryConditions::type)
-        .def("set_cell_type", &cfd::BoundaryConditions::set_cell_type);
+        .def("set_cell_type", &cfd::BoundaryConditions::set_cell_type)
+        .def("is_solid", &cfd::BoundaryConditions::is_solid);
     
         py::class_<cfd::PressureField>(m, "PressureField")
         .def(

@@ -42,5 +42,7 @@ namespace cfd {
             double prescribed_p(int i, int j) const;
 
             CellType type(int i, int j) const;
+
+            bool is_solid(int i, int j) const;
     };
 }
