@@ -477,7 +477,8 @@ namespace cfd {
             fix_cell(i, j, value, poisson_matrix, poisson_rhs);
         }
 
-        poisson_matrix.sterilize(); // Remove zero entries.
+        poisson_matrix.init_csr(); // Creates compressed sparse row structure
+        poisson_matrix.sterilize(); // Remove zero entries
 
         linalg::Vector pressure_values =
             linalg::conjugate_gradient(poisson_matrix, poisson_rhs);

@@ -92,4 +92,22 @@ namespace cfd::linalg {
         return v * alpha;
     }
 
+    Vector& Vector::axpy(double alpha, const Vector& x) {
+        if (n_ != x.n_) {
+            throw std::invalid_argument("Vector sizes do not match for axpy.");
+        }
+
+        for (std::size_t i = 0; i < n_; i++) {
+            data_[i] += alpha * x.data_[i];
+        }
+        return *this;
+    }
+
+    Vector& Vector::operator*=(double alpha) {
+        for (std::size_t i = 0; i < n_; i++) {
+            data_[i] *= alpha;
+        }
+        return *this;
+    }
+
 }

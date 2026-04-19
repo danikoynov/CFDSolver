@@ -4,37 +4,40 @@
 namespace cfd::linalg {
 
     Vector conjugate_gradient(const LinearOperator& A, const Vector& b) {
+        const double TOL = 1e-6;
+        const std::size_t MAX_ITER = 10 * b.n();
 
         Vector x(b.n());
         Vector r = b - A.apply(x);
         Vector p = r;
+        double last_rr = Vector::dot(r, r);
 
-        const double TOL = 1e-9;
-        
-        auto within_tolerance = [TOL] (const Vector& v) {
-            for (std::size_t i = 0; i < v.n(); i ++) {
-                if (std::abs(v(i)) > TOL) {
-                    return false;
-                }
+        auto within_tolerance = [TOL](const Vector& v) {
+            for (std::size_t i = 0; i < v.n(); i++) {
+                if (std::abs(v(i)) > TOL) return false;
             }
             return true;
         };
 
-        while(!within_tolerance(r)) {
-            Vector Ap = A.apply(p);
+        std::size_t iters = 0;
+        while (iters++ < MAX_ITER) {
+            if (iters % 10 == 0 && within_tolerance(r)) break;
 
-            double rr = Vector::dot(r, r);
-            double alpha = rr / Vector::dot(p, Ap);
+            Vector Ap    = A.apply(p);
+            double alpha = last_rr / Vector::dot(p, Ap);
 
-            x = x + alpha * p;
-            Vector r_new = r - alpha * Ap;
+            x.axpy( alpha, p);
+            r.axpy(-alpha, Ap);
 
-            double beta = Vector::dot(r_new, r_new) / rr;
-            p = r_new + beta * p;
-            r = r_new;
+            double new_rr = Vector::dot(r, r);
+            double beta   = new_rr / last_rr;
+            last_rr       = new_rr;
+
+            p *= beta;
+            p.axpy(1.0, r);
         }
 
         return x;
     }
-    
+
 }

@@ -7,28 +7,23 @@ namespace cfd::linalg {
 
     LinearOperator::LinearOperator(
         std::size_t input_size, std::size_t output_size) :
-        input_size_(input_size), output_size_(output_size),
-        dep_(output_size) {}
+        input_size_(input_size), 
+        output_size_(output_size),
+        dep_(output_size),
+        row_ptr_(output_size + 1) {
+    }
 
-    LinearOperator::LinearOperator(
-        const Matrix& A) :
-        input_size_(A.cols()), output_size_(A.rows()) {
+    void LinearOperator::init_csr() {
+        csr_dep_.clear();
 
-        std::size_t r = A.rows();
-        std::size_t c = A.cols();
-        
-        dep_.resize(output_size_);
-
-        for (std::size_t i = 0; i < r; i ++) {
-            for (std::size_t j = 0; j < c; j ++) {
-                
-                if (std::abs(A(i, j)) < EPS) {
-                    continue;
-                }
-
-                dep_[i].push_back(std::make_pair(j, A(i, j)));
+        for (std::size_t i = 0; i < output_size_; i++) {
+            row_ptr_[i] = csr_dep_.size();
+            for (const auto& [col, coeff] : dep_[i]) {
+                csr_dep_.emplace_back(col, coeff);
             }
         }
+
+        row_ptr_[output_size_] = csr_dep_.size();
     }
 
     Vector LinearOperator::apply(const Vector& v) const {
@@ -40,7 +35,8 @@ namespace cfd::linalg {
         Vector res(output_size_);
 
         for (std::size_t i = 0; i < output_size_; i ++) {
-            for (const auto& [col, coeff] : dep_[i]) {
+            for (std::size_t j = row_ptr_[i]; j < row_ptr_[i + 1]; j ++) {
+                const auto& [col, coeff] = csr_dep_[j];
                 res(i) += coeff * v(col);
             }
         }

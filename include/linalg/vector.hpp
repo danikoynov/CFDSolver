@@ -27,5 +27,8 @@ namespace cfd::linalg {
             
             Vector operator*(double alpha) const;
             friend Vector operator*(double alpha, const Vector& v);
+            Vector& operator*=(double alpha);
+            
+            Vector& axpy(double alpha, const Vector& x);
     };   
 }

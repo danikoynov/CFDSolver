@@ -1,10 +1,12 @@
 #include "linalg/conjugate_gradient.hpp"
+#include "linalg/linear_operator.hpp"
 
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 
+using cfd::linalg::LinearOperator;
 using cfd::linalg::Matrix;
 using cfd::linalg::Vector;
 using cfd::linalg::conjugate_gradient;
@@ -21,6 +23,21 @@ namespace {
         if (!condition) {
             throw std::runtime_error(message);
         }
+    }
+
+    LinearOperator make_operator(const Matrix& A) {
+        LinearOperator op(A.cols(), A.rows());
+
+        for (std::size_t i = 0; i < A.rows(); i++) {
+            for (std::size_t j = 0; j < A.cols(); j++) {
+                if (std::abs(A(i, j)) > 0.0) {
+                    op(static_cast<int>(i), static_cast<int>(j)) = A(i, j);
+                }
+            }
+        }
+
+        op.init_csr();
+        return op;
     }
 
     Vector matvec(const Matrix& A, const Vector& x) {
@@ -85,9 +102,11 @@ namespace {
 
         b(0) = 1.0; b(1) = 2.0; b(2) = 3.0;
 
+        LinearOperator op = make_operator(A);
+
         bool threw = false;
         try {
-            conjugate_gradient(A, b);
+            conjugate_gradient(op, b);
         } catch (const std::runtime_error&) {
             threw = true;
         }
@@ -104,9 +123,11 @@ namespace {
 
         b(0) = 1.0; b(1) = 2.0;
 
+        LinearOperator op = make_operator(A);
+
         bool threw = false;
         try {
-            conjugate_gradient(A, b);
+            conjugate_gradient(op, b);
         } catch (const std::runtime_error&) {
             threw = true;
         }
@@ -124,28 +145,26 @@ namespace {
 
         b(0) = 0.0; b(1) = 0.0; b(2) = 0.0;
 
-        Vector x = conjugate_gradient(A, b);
+        LinearOperator op = make_operator(A);
+        Vector x = conjugate_gradient(op, b);
 
         require_vector_close(x, {0.0, 0.0, 0.0}, "test_zero_rhs_returns_zero");
     }
 
     void test_1x1_system() {
-        // 4x = 20
         Matrix A(1, 1);
         Vector b(1);
 
         A(0, 0) = 4.0;
         b(0) = 20.0;
 
-        Vector x = conjugate_gradient(A, b);
+        LinearOperator op = make_operator(A);
+        Vector x = conjugate_gradient(op, b);
 
         require_vector_close(x, {5.0}, "test_1x1_system");
     }
 
     void test_2x2_spd_system() {
-        // [4 1][x] = [6]
-        // [1 3][y]   [7]
-        // solution: x=1, y=2
         Matrix A(2, 2);
         Vector b(2);
 
@@ -155,17 +174,14 @@ namespace {
         b(0) = 6.0;
         b(1) = 7.0;
 
-        Vector x = conjugate_gradient(A, b);
+        LinearOperator op = make_operator(A);
+        Vector x = conjugate_gradient(op, b);
 
         require_vector_close(x, {1.0, 2.0}, "test_2x2_spd_system");
         require_residual_small(A, x, b, "test_2x2_spd_system");
     }
 
     void test_3x3_spd_system() {
-        // A = [4 1 0]
-        //     [1 3 1]
-        //     [0 1 2]
-        // exact solution x = [1, 2, 3]
         Matrix A(3, 3);
         Vector b(3);
 
@@ -177,15 +193,14 @@ namespace {
         b(1) = 10.0;
         b(2) = 8.0;
 
-        Vector x = conjugate_gradient(A, b);
+        LinearOperator op = make_operator(A);
+        Vector x = conjugate_gradient(op, b);
 
         require_vector_close(x, {1.0, 2.0, 3.0}, "test_3x3_spd_system");
         require_residual_small(A, x, b, "test_3x3_spd_system");
     }
 
     void test_diagonal_spd_system() {
-        // Diagonal SPD system
-        // exact solution x = [1, 2, 3, 4]
         Matrix A(4, 4);
         Vector b(4);
 
@@ -199,17 +214,14 @@ namespace {
         b(2) = 12.0;
         b(3) = 20.0;
 
-        Vector x = conjugate_gradient(A, b);
+        LinearOperator op = make_operator(A);
+        Vector x = conjugate_gradient(op, b);
 
         require_vector_close(x, {1.0, 2.0, 3.0, 4.0}, "test_diagonal_spd_system");
         require_residual_small(A, x, b, "test_diagonal_spd_system");
     }
 
     void test_poisson_like_tridiagonal_system() {
-        // [ 2 -1  0  0 ] [1]   [0]
-        // [-1  2 -1  0 ] [2] = [0]
-        // [ 0 -1  2 -1 ] [3]   [0]
-        // [ 0  0 -1  2 ] [4]   [5]
         Matrix A(4, 4);
         Vector b(4);
 
@@ -223,7 +235,8 @@ namespace {
         b(2) = 0.0;
         b(3) = 5.0;
 
-        Vector x = conjugate_gradient(A, b);
+        LinearOperator op = make_operator(A);
+        Vector x = conjugate_gradient(op, b);
 
         require_vector_close(
             x,
@@ -234,9 +247,6 @@ namespace {
     }
 
     void test_decimal_spd_system() {
-        // [1.5 0.5][x] = [2.5]
-        // [0.5 2.0][y]   [4.5]
-        // exact solution: x=1, y=2
         Matrix A(2, 2);
         Vector b(2);
 
@@ -246,7 +256,8 @@ namespace {
         b(0) = 2.5;
         b(1) = 4.5;
 
-        Vector x = conjugate_gradient(A, b);
+        LinearOperator op = make_operator(A);
+        Vector x = conjugate_gradient(op, b);
 
         require_vector_close(x, {1.0, 2.0}, "test_decimal_spd_system");
         require_residual_small(A, x, b, "test_decimal_spd_system");
