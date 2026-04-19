@@ -224,23 +224,43 @@ namespace cfd {
     }
     
 
-    void fix_cell(
-        int cell_id,
+    void Simulator::fix_cell(
+        int i,
+        int j,
         double val,
-        int num_of_cells,
         linalg::LinearOperator& poisson_matrix,
         linalg::Vector& poisson_rhs
     ) {
         // Fixes the pressure of a cell to a given value
         // in the poisson set of equations
+        
+        const std::size_t h = grid_.height();
+        const std::size_t w = grid_.width();
 
-        for (int row = 0; row < num_of_cells; row++) {
-            if (row != cell_id) {
-                poisson_rhs(row) -= poisson_matrix(row, cell_id) * val;
+        auto cell_index = [h](std::size_t i, std::size_t j) {
+            return i * h + j;
+        };
+
+        auto inside_bounds = [w, h] (int i, int j) {
+            return ((0 <= i && i < w) && (0 <= j && j < h));
+        };
+        
+        const std::size_t cell_id = cell_index(i, j);
+
+        std::vector<int> neib;
+        
+        if (inside_bounds(i - 1, j)) neib.push_back(cell_index(i - 1, j));
+        if (inside_bounds(i + 1, j)) neib.push_back(cell_index(i + 1, j));
+        if (inside_bounds(i, j - 1)) neib.push_back(cell_index(i, j - 1));
+        if (inside_bounds(i, j + 1)) neib.push_back(cell_index(i, j + 1));
+
+        for (std::size_t id : neib) {
+            if (id != cell_id) {
+                poisson_rhs(id) -= poisson_matrix(id, cell_id) * val;
             }
         }
 
-        for (int id = 0; id < num_of_cells; id++) {
+        for (std::size_t id : neib) {
             poisson_matrix(cell_id, id) = 0;
             poisson_matrix(id, cell_id) = 0;
         }
@@ -444,14 +464,17 @@ namespace cfd {
                         const int cell_id = i * h + j;
                         constrained_cells.push_back({cell_id, 0.0});
 
-                        fix_cell(cell_id, 0.0, number_of_cells, poisson_matrix, poisson_rhs);
+                        fix_cell(i, j, 0.0, poisson_matrix, poisson_rhs);
                         found = true;
                     }
                 }
         }
 
         for (const auto& [id, value] : constrained_cells) {
-            fix_cell(id, value, number_of_cells, poisson_matrix, poisson_rhs);
+            int i = id / h;
+            int j = id % h;
+
+            fix_cell(i, j, value, poisson_matrix, poisson_rhs);
         }
 
         poisson_matrix.sterilize(); // Remove zero entries.
