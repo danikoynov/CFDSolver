@@ -40,7 +40,16 @@ PYBIND11_MODULE(cfdsolver_py, m) {
 
     py::class_<cfd::VelocityField>(m, "VelocityField")
         .def("get_u", py::overload_cast<int, int>(&cfd::VelocityField::get_u, py::const_))
-        .def("get_v", py::overload_cast<int, int>(&cfd::VelocityField::get_v, py::const_));
+        .def("get_v", py::overload_cast<int, int>(&cfd::VelocityField::get_v, py::const_))
+        .def("set_u",
+            [](cfd::VelocityField& vf, int i, int j, double value) {
+                vf.get_u(i, j) = value;
+            })
+
+        .def("set_v",
+            [](cfd::VelocityField& vf, int i, int j, double value) {
+                vf.get_v(i, j) = value;
+            });
 
     py::class_<cfd::Grid>(m, "Grid")
         .def("pressure",
