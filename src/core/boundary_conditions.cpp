@@ -75,7 +75,7 @@ namespace cfd {
         const int height = static_cast<int>(height_);
 
         if (i < -1 || i > width ||
-            j < -1 || j > height_) {
+            j < -1 || j > height) {
             throw std::out_of_range("boundary condition p indexes out of bounds");
         }
 
