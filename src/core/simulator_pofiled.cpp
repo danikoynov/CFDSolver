@@ -4,6 +4,8 @@
 #include <optional>
 #include <stdexcept>
 #include <iostream>
+#include <chrono>
+#include <iomanip>
 
 namespace cfd {
 
@@ -224,43 +226,23 @@ namespace cfd {
     }
     
 
-    void Simulator::fix_cell(
-        int i,
-        int j,
+    void fix_cell(
+        int cell_id,
         double val,
-        linalg::PoissonOperator& poisson_matrix,
+        int num_of_cells,
+        linalg::LinearOperator& poisson_matrix,
         linalg::Vector& poisson_rhs
     ) {
         // Fixes the pressure of a cell to a given value
         // in the poisson set of equations
         
-        const std::size_t h = grid_.height();
-        const std::size_t w = grid_.width();
-
-        auto cell_index = [h](std::size_t i, std::size_t j) {
-            return i * h + j;
-        };
-
-        auto inside_bounds = [w, h] (int i, int j) {
-            return ((0 <= i && i < w) && (0 <= j && j < h));
-        };
-        
-        const std::size_t cell_id = cell_index(i, j);
-
-        std::vector<int> neib;
-        
-        if (inside_bounds(i - 1, j)) neib.push_back(cell_index(i - 1, j));
-        if (inside_bounds(i + 1, j)) neib.push_back(cell_index(i + 1, j));
-        if (inside_bounds(i, j - 1)) neib.push_back(cell_index(i, j - 1));
-        if (inside_bounds(i, j + 1)) neib.push_back(cell_index(i, j + 1));
-
-        for (std::size_t id : neib) {
-            if (id != cell_id) {
-                poisson_rhs(id) -= poisson_matrix(id, cell_id) * val;
+        for (int row = 0; row < num_of_cells; row++) {
+            if (row != cell_id) {
+                poisson_rhs(row) -= poisson_matrix(row, cell_id) * val;
             }
         }
 
-        for (std::size_t id : neib) {
+        for (int id = 0; id < num_of_cells; id++) {
             poisson_matrix(cell_id, id) = 0;
             poisson_matrix(id, cell_id) = 0;
         }
@@ -273,7 +255,7 @@ namespace cfd {
         int i,
         int j,
         double timestep,
-        linalg::PoissonOperator& poisson_matrix,
+        linalg::LinearOperator& poisson_matrix,
         linalg::Vector& poisson_rhs
     ) {
         // Build the equation for cell [i, j]
@@ -408,26 +390,64 @@ namespace cfd {
     }
 
     void Simulator::project(double timestep) {
-        /* Determine the pressure in all cells of the grid to
-        * make the velocity field divergence free, taking
-        * into account the boundary conditions.
-        */
+        using clock = std::chrono::steady_clock;
 
-        const int number_of_cells = grid_.width() * grid_.height();
-        const int w = grid_.width();
-        const int h = grid_.height();
-        const auto& bc = grid_.boundary_conditions();
+        auto elapsed_ms = [](const clock::time_point& a, const clock::time_point& b) {
+            return std::chrono::duration<double, std::milli>(b - a).count();
+        };
 
-        // Each connected island of fluid cells requires an additional
-        // constraint in the system (Neumann problem). Currently, only
-        // one island is considered.
-        linalg::PoissonOperator poisson_matrix(
-            grid_.width(),
-            grid_.height()
-        );
-        linalg::Vector poisson_rhs(number_of_cells);
+        auto measure = [&](double& total_ms, int& calls, auto&& fn) {
+            auto t0 = clock::now();
+            fn();
+            auto t1 = clock::now();
+            total_ms += elapsed_ms(t0, t1);
+            ++calls;
+        };
 
+        double setup_ms = 0.0;
+        double main_loop_ms = 0.0;
+        double build_equation_ms = 0.0;
+        double island_fix_ms = 0.0;
+        double constrained_fix_ms = 0.0;
+        double sterilize_ms = 0.0;
+        double cg_ms = 0.0;
+        double set_pressure_ms = 0.0;
+        double apply_gradient_ms = 0.0;
+
+        int setup_calls = 0;
+        int main_loop_calls = 0;
+        int build_equation_calls = 0;
+        int island_fix_calls = 0;
+        int constrained_fix_calls = 0;
+        int sterilize_calls = 0;
+        int cg_calls = 0;
+        int set_pressure_calls = 0;
+        int apply_gradient_calls = 0;
+
+        auto project_start = clock::now();
+
+        int number_of_cells = 0;
+        int w = 0;
+        int h = 0;
+
+        const BoundaryConditions* bc_ptr = nullptr;
+
+        linalg::LinearOperator poisson_matrix(0, 0);
+        linalg::Vector poisson_rhs(0);
         std::vector<std::pair<int, double>> constrained_cells;
+
+        measure(setup_ms, setup_calls, [&] {
+            number_of_cells = grid_.width() * grid_.height();
+            w = grid_.width();
+            h = grid_.height();
+            bc_ptr = &grid_.boundary_conditions();
+
+            poisson_matrix = linalg::LinearOperator(number_of_cells, number_of_cells);
+            poisson_rhs = linalg::Vector(number_of_cells);
+            constrained_cells.clear();
+        });
+
+        const auto& bc = *bc_ptr;
 
         auto is_edge = [&](int i, int j) {
             return (
@@ -440,56 +460,114 @@ namespace cfd {
 
         bool is_island = true;
 
-        for (int i = 0; i < w; i++)
-            for (int j = 0; j < h; j++) {
-                const std::optional<double> constraint =
-                    build_equation(i, j, timestep, poisson_matrix, poisson_rhs);
+        measure(main_loop_ms, main_loop_calls, [&] {
+            for (int i = 0; i < w; i++) {
+                for (int j = 0; j < h; j++) {
+                    std::optional<double> constraint;
 
-                if (bc.type(i, j) == CellType::FLUID && is_edge(i, j)) {
-                    is_island = false;
-                }
+                    measure(build_equation_ms, build_equation_calls, [&] {
+                        constraint = build_equation(i, j, timestep, poisson_matrix, poisson_rhs);
+                    });
 
-                if (constraint.has_value()) {
-                    is_island = false;
+                    if (bc.type(i, j) == CellType::FLUID && is_edge(i, j)) {
+                        is_island = false;
+                    }
 
-                    const int cell_id = i * h + j;
-                    constrained_cells.push_back({cell_id, *constraint});
-                }
-            }
-
-        if (is_island) {
-            // Choose a fluid cell arbitrarily and fix its pressure to zero.
-            bool found = false;
-
-            for (int i = 0; i < w && !found; i++)
-                for (int j = 0; j < h && !found; j++) {
-                    if (bc.type(i, j) == CellType::FLUID) {
+                    if (constraint.has_value()) {
+                        is_island = false;
                         const int cell_id = i * h + j;
-                        constrained_cells.push_back({cell_id, 0.0});
-
-                        fix_cell(i, j, 0.0, poisson_matrix, poisson_rhs);
-                        found = true;
+                        constrained_cells.push_back({cell_id, *constraint});
                     }
                 }
+            }
+        });
+
+        if (is_island) {
+            measure(island_fix_ms, island_fix_calls, [&] {
+                bool found = false;
+
+                for (int i = 0; i < w && !found; i++) {
+                    for (int j = 0; j < h && !found; j++) {
+                        if (bc.type(i, j) == CellType::FLUID) {
+                            const int cell_id = i * h + j;
+                            constrained_cells.push_back({cell_id, 0.0});
+
+                            fix_cell(cell_id, 0.0, number_of_cells, poisson_matrix, poisson_rhs);
+                            found = true;
+                        }
+                    }
+                }
+            });
         }
 
-        for (const auto& [id, value] : constrained_cells) {
-            int i = id / h;
-            int j = id % h;
+        measure(constrained_fix_ms, constrained_fix_calls, [&] {
+            for (const auto& [id, value] : constrained_cells) {
+                fix_cell(id, value, number_of_cells, poisson_matrix, poisson_rhs);
+            }
+        });
 
-            fix_cell(i, j, value, poisson_matrix, poisson_rhs);
+        measure(sterilize_ms, sterilize_calls, [&] {
+            poisson_matrix.sterilize();
+        });
+
+        linalg::Vector pressure_values(number_of_cells);
+
+        measure(cg_ms, cg_calls, [&] {
+            pressure_values = linalg::conjugate_gradient(poisson_matrix, poisson_rhs);
+        });
+
+        measure(set_pressure_ms, set_pressure_calls, [&] {
+            set_pressure_values(pressure_values);
+        });
+
+        measure(apply_gradient_ms, apply_gradient_calls, [&] {
+            apply_pressure_gradient(timestep);
+        });
+
+        auto project_end = clock::now();
+        double total_project_ms = elapsed_ms(project_start, project_end);
+
+        auto print_stat = [&](const char* name, double ms, int calls) {
+            double pct = (total_project_ms > 0.0) ? (100.0 * ms / total_project_ms) : 0.0;
+
+            std::cout
+                << std::left << std::setw(28) << name
+                << " | total: " << std::setw(10) << ms << " ms"
+                << " | pct: " << std::setw(8) << pct << " %"
+                << " | calls: " << std::setw(6) << calls;
+
+            if (calls > 1) {
+                std::cout << " | avg/call: " << (ms / calls) << " ms";
+            }
+
+            std::cout << '\n';
+        };
+
+        std::cout << std::fixed << std::setprecision(3);
+        std::cout << "\n=== Project Profile ===\n";
+        std::cout << "Total project time: " << total_project_ms << " ms\n";
+
+        print_stat("setup", setup_ms, setup_calls);
+        print_stat("main grid loop", main_loop_ms, main_loop_calls);
+        print_stat("build_equation", build_equation_ms, build_equation_calls);
+
+        if (island_fix_calls > 0) {
+            print_stat("island fix", island_fix_ms, island_fix_calls);
         }
 
-        poisson_matrix.finalize();
-
-        linalg::Vector pressure_values =
-            linalg::conjugate_gradient(poisson_matrix, poisson_rhs);
+        print_stat("fix constrained cells", constrained_fix_ms, constrained_fix_calls);
+        print_stat("sterilize", sterilize_ms, sterilize_calls);
+        print_stat("conjugate_gradient", cg_ms, cg_calls);
+        print_stat("set_pressure_values", set_pressure_ms, set_pressure_calls);
+        print_stat("apply_pressure_gradient", apply_gradient_ms, apply_gradient_calls);
+        std::cout << "=======================\n";
 
         set_pressure_values(pressure_values);
         apply_pressure_gradient(timestep);
     }
 
     void Simulator::tick() {
+        
         const double timestep = determine_timestep();
         
         advect(timestep);
