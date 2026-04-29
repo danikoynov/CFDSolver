@@ -15,7 +15,7 @@ add_library(cfd_linalg
     src/linalg/gaussian_elimination.cpp
     src/linalg/matrix.cpp
     src/linalg/vector.cpp
-    src/linalg/linear_operator.cpp
+    src/linalg/poisson_operator.cpp
     src/linalg/conjugate_gradient.cpp
 )
 

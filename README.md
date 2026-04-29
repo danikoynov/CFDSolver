@@ -13,14 +13,15 @@ FlowGrid currently includes the following core features:
 - C++ solver implementation with Python bindings for experimentation and analysis
 - A Python visualizer for inspecting simulation results
 - Pre-built setups for the lid-driven cavity and pressure-driven channel test cases
+- Sparse Poisson pressure solve using preconditioned conjugate gradient with an IC(0) preconditioner
 
 ## Benchmarking and Validation
 
 ### Lid-Driven Cavity
 
-FlowGrid is validated against the classic lid-driven cavity setup: fluid is placed inside solid walls and the top one (the lid) is moving sideways.
+FlowGrid is validated against the classic lid-driven cavity setup: fluid is placed inside solid walls and the top wall, called the lid, moves sideways.
 
-The benchmark data is obtained from **Ghia et al. (1982)**. For **Re = 100**, the solver output is compared against the reference centerline velocity profiles on a **60 × 60** grid.
+The benchmark data is obtained from **Ghia et al. (1982)**. For **Re = 100**, the solver output is compared against the reference centerline velocity profiles on a **100 × 100** grid.
 
 The primary comparison is made using the cavity centerline velocity profiles:
 
@@ -29,12 +30,11 @@ The primary comparison is made using the cavity centerline velocity profiles:
 
 For this benchmark case, the solver achieves:
 
-- **RMSE = 0.0316** for the horizontal velocity component \(u\)
-- **RMSE = 0.0143** for the vertical velocity component \(v\)
+- **RMSE = 0.0324** for the horizontal velocity component \(u\)
+- **RMSE = 0.0216** for the vertical velocity component \(v\)
+- **Execution time = 14.53 s** on a **100 × 100** grid using a Release build
 
-For this configuration, the simulation converges in about a minute with a tolerance of **10⁻⁴**.
-
-These results show good agreement with the Ghia reference data and provide an initial validation of the solver’s accuracy for incompressible cavity flow.
+These results show good agreement with the Ghia reference data and provide an initial validation of the solver’s accuracy for incompressible cavity flow. 
 
 ---
 
@@ -77,6 +77,13 @@ A typical build using Ninja would look like:
 
 ```bash
 cmake -S . -B build -G Ninja
+cmake --build build
+```
+
+For performance benchmarks and simulations, use a Release build:
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
@@ -131,7 +138,7 @@ This benchmark is used to compare the solver output against the reference cavity
 The repository is organized into a few main components:
 
 - `src/core/` contains the core CFD solver implementation, including the main simulation data structures and logic such as the **pressure field**, **velocity field**, **boundary conditions**, **grid**, and **simulator**.
-- `src/linalg/` contains the linear algebra utilities used by the solver, including methods such as **Gaussian elimination** and the **conjugate gradient method**.
+- `src/linalg/` contains the linear algebra utilities used by the solver, including the **Poisson operator**, **conjugate gradient method**, and **Incomplete Cholesky IC(0) preconditioner** used in the pressure projection step.
 - `src/python/` contains the **Python bindings** that expose the C++ solver to Python.
 - `include/` contains the header files defining the classes and methods implemented in `src/`.
 - `python/` contains the Python-side utilities, including the **visualizer** and the predefined setup scripts under `python/setups/`.
@@ -199,6 +206,17 @@ This is a major improvement because:
 
 In practice, for this type of grid-based Poisson solve, conjugate gradient often gives behavior closer to **\(O(m^3)\)**, while a pessimistic bound is around **\(O(m^4)\)**. This makes it far more suitable than Gaussian elimination for pressure projection in incompressible flow simulation.
 
+FlowGrid now uses a preconditioned conjugate gradient method for the pressure solve. The pressure matrix is represented by a dedicated `PoissonOperator`, which stores the sparse grid-based system and builds an Incomplete Cholesky IC(0) preconditioner.
+
+The preconditioner approximates the Poisson matrix as
+
+\[
+A \approx LL^T
+\]
+
+while preserving the local grid stencil structure. During each CG iteration, the residual is approximately solved through forward and backward triangular sweeps. This reduces the effective condition number of the system and significantly improves convergence compared with unpreconditioned CG.
+
+
 ## Future Work
 
 Planned next steps for FlowGrid include:
@@ -206,7 +224,10 @@ Planned next steps for FlowGrid include:
 - adding support for **flow over an airfoil**, extending the solver beyond the current cavity and channel benchmarks
 - improving the **user interface** for configuring and interacting with simulations
 - making the **conjugate gradient solver multithreaded** to accelerate the projection step
-- adding a **preconditioner** to further improve the efficiency of the linear solve
+
+## License
+
+This project is released under the MIT License.
 
 
 ## References
