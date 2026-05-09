@@ -27,39 +27,6 @@ from visualizer import Visualizer
 # --------------------------------------------------
 RUN_MODE = "visualizer"
 
-
-def impose_boundary_conditions(sim: cfdsolver_py.Simulator, lid_velocity: float):
-    grid = sim.grid()
-    bc = grid.boundary_conditions()
-
-    w = grid.width()
-    h = grid.height()
-
-    for i in range(w):
-        bc.set_cell_type(i, 0, cfdsolver_py.CellType.SOLID)
-        bc.set_cell_type(i, h - 1, cfdsolver_py.CellType.SOLID)
-
-        bc.prescribe_u_value(i + 1, 0, 0.0)
-        bc.prescribe_u_value(i + 1, h - 1, 0.0)
-
-        bc.prescribe_v_value(i, 1, 0.0)
-        bc.prescribe_v_value(i, h - 1, 0.0)
-
-    # moving lid
-    for i in range(2, w - 1):
-        bc.prescribe_u_value(i, h - 2, lid_velocity)
-
-    for j in range(h):
-        bc.set_cell_type(0, j, cfdsolver_py.CellType.SOLID)
-        bc.set_cell_type(w - 1, j, cfdsolver_py.CellType.SOLID)
-
-        bc.prescribe_v_value(0, j + 1, 0.0)
-        bc.prescribe_v_value(w - 1, j + 1, 0.0)
-
-        bc.prescribe_u_value(1, j, 0.0)
-        bc.prescribe_u_value(w - 1, j, 0.0)
-
-
 def cell_center_velocity(vf, x, y):
     u = 0.5 * (vf.get_u(x, y) + vf.get_u(x + 1, y))
     v = 0.5 * (vf.get_v(x, y) + vf.get_v(x, y + 1))
@@ -119,9 +86,9 @@ if __name__ == "__main__":
     Re = 100
     viscosity = length * lid_velocity / Re
 
-    grid_w = 70
-    grid_h = 70
-    cell_size = 10
+    grid_w = 100
+    grid_h = 100
+    cell_size = 8
 
     dx = length / grid_w
 
@@ -133,9 +100,9 @@ if __name__ == "__main__":
         False,
         viscosity
     )
-
-    impose_boundary_conditions(sim, lid_velocity)
-
+    setup = cfdsolver_py.LidDrivenCavity(lid_velocity)
+    setup.impose_boundary_conditions(sim.grid())
+    
     if RUN_MODE == "visualizer":
         scale_arrows = False
         visualizer = Visualizer(sim, grid_w, grid_h, cell_size, scale_arrows)

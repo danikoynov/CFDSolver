@@ -4,11 +4,15 @@
 #include "core/pressure_field.hpp"
 #include "core/boundary_conditions.hpp"
 #include "core/velocity_field.hpp"
+#include "setups/base.hpp"
+#include "setups/ldc.hpp"
 
 namespace py = pybind11;
 
 PYBIND11_MODULE(cfdsolver_py, m) {
     m.doc() = "Python bindings for CFDSolver";
+
+
 
     py::enum_<cfd::CellType>(m, "CellType")
         .value("FLUID", cfd::CellType::FLUID)
@@ -70,4 +74,12 @@ PYBIND11_MODULE(cfdsolver_py, m) {
         .def("grid",
              py::overload_cast<>(&cfd::Simulator::grid),
              py::return_value_policy::reference_internal);
+
+    py::class_<cfd::setups::BaseSetup>(m, "BaseSetup");
+
+    py::class_<cfd::setups::LidDrivenCavity, cfd::setups::BaseSetup>(m, "LidDrivenCavity")
+        .def(py::init<double>())
+        .def("impose_boundary_conditions",
+             &cfd::setups::LidDrivenCavity::impose_boundary_conditions);
+
 }

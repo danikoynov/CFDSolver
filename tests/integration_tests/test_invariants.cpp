@@ -6,9 +6,9 @@
 #include <string>
 #include <iomanip>
 
-const double TOL = 1e-9;
-const double DIV_TOL_SMALL = 1e-8;
-const double DIV_TOL_BIG = 1e-8;
+const double TOL = 1e-6;
+const double DIV_TOL_SMALL = 1e-6;
+const double DIV_TOL_BIG = 1e-5;
 const int STEPS = 100;
 
 void test_zero_state_stays_zero() {

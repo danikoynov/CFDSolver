@@ -6,8 +6,8 @@
 #include <stdexcept>
 #include <string>
 
-using cfd::linalg::Matrix;
 using cfd::linalg::PoissonOperator;
+using cfd::linalg::Matrix;
 using cfd::linalg::Vector;
 using cfd::linalg::conjugate_gradient;
 
@@ -26,12 +26,13 @@ namespace {
     }
 
     PoissonOperator make_operator(const Matrix& A) {
-        require(A.rows() == A.cols(), "make_operator: PoissonOperator requires a square matrix");
+        require(A.rows() == A.cols(), "make_operator: matrix must be square");
 
-        std::size_t width = A.cols();
-        std::size_t height = 1;
+        const std::size_t n = A.rows();
 
-        PoissonOperator op(width, height);
+        // Treat the test matrix as a 1D grid of size n.
+        // Therefore total size = width * height = n * 1 = n.
+        PoissonOperator op(n, 1);
 
         for (std::size_t i = 0; i < A.rows(); i++) {
             for (std::size_t j = 0; j < A.cols(); j++) {
@@ -41,11 +42,6 @@ namespace {
             }
         }
 
-        return op;
-    }
-
-    PoissonOperator make_finalized_operator(const Matrix& A) {
-        PoissonOperator op = make_operator(A);
         op.finalize();
         return op;
     }
@@ -76,9 +72,13 @@ namespace {
         for (double x : expected) {
             if (!approx_equal(v(i), x, tol)) {
                 throw std::runtime_error(
-                    test_name + ": wrong value at index " + std::to_string(i) +
-                    ", expected " + std::to_string(x) +
-                    ", got " + std::to_string(v(i))
+                    test_name +
+                    ": wrong value at index " +
+                    std::to_string(i) +
+                    ", got " +
+                    std::to_string(v(i)) +
+                    ", expected " +
+                    std::to_string(x)
                 );
             }
             ++i;
@@ -99,9 +99,13 @@ namespace {
         for (std::size_t i = 0; i < b.n(); i++) {
             if (std::abs(Ax(i) - b(i)) > tol) {
                 throw std::runtime_error(
-                    test_name + ": residual too large at index " + std::to_string(i) +
-                    ", expected Ax = " + std::to_string(b(i)) +
-                    ", got " + std::to_string(Ax(i))
+                    test_name +
+                    ": residual too large at index " +
+                    std::to_string(i) +
+                    ", got Ax=" +
+                    std::to_string(Ax(i)) +
+                    ", b=" +
+                    std::to_string(b(i))
                 );
             }
         }
@@ -114,9 +118,11 @@ namespace {
         A(0, 0) = 4.0; A(0, 1) = 1.0;
         A(1, 0) = 1.0; A(1, 1) = 3.0;
 
-        b(0) = 1.0; b(1) = 2.0; b(2) = 3.0;
+        b(0) = 1.0;
+        b(1) = 2.0;
+        b(2) = 3.0;
 
-        PoissonOperator op = make_finalized_operator(A);
+        PoissonOperator op = make_operator(A);
 
         bool threw = false;
         try {
@@ -136,8 +142,7 @@ namespace {
 
         bool threw = false;
         try {
-            PoissonOperator op = make_finalized_operator(A);
-            (void)op;
+            PoissonOperator op = make_operator(A);
         } catch (const std::runtime_error&) {
             threw = true;
         }
@@ -153,13 +158,14 @@ namespace {
         A(1, 0) = 1.0; A(1, 1) = 3.0; A(1, 2) = 1.0;
         A(2, 0) = 0.0; A(2, 1) = 1.0; A(2, 2) = 2.0;
 
-        b(0) = 0.0; b(1) = 0.0; b(2) = 0.0;
+        b(0) = 0.0;
+        b(1) = 0.0;
+        b(2) = 0.0;
 
-        PoissonOperator op = make_finalized_operator(A);
+        PoissonOperator op = make_operator(A);
         Vector x = conjugate_gradient(op, b);
 
         require_vector_close(x, {0.0, 0.0, 0.0}, "test_zero_rhs_returns_zero");
-        require_residual_small(A, x, b, "test_zero_rhs_returns_zero");
     }
 
     void test_1x1_system() {
@@ -169,7 +175,7 @@ namespace {
         A(0, 0) = 4.0;
         b(0) = 20.0;
 
-        PoissonOperator op = make_finalized_operator(A);
+        PoissonOperator op = make_operator(A);
         Vector x = conjugate_gradient(op, b);
 
         require_vector_close(x, {5.0}, "test_1x1_system");
@@ -186,7 +192,7 @@ namespace {
         b(0) = 6.0;
         b(1) = 7.0;
 
-        PoissonOperator op = make_finalized_operator(A);
+        PoissonOperator op = make_operator(A);
         Vector x = conjugate_gradient(op, b);
 
         require_vector_close(x, {1.0, 2.0}, "test_2x2_spd_system");
@@ -205,7 +211,7 @@ namespace {
         b(1) = 10.0;
         b(2) = 8.0;
 
-        PoissonOperator op = make_finalized_operator(A);
+        PoissonOperator op = make_operator(A);
         Vector x = conjugate_gradient(op, b);
 
         require_vector_close(x, {1.0, 2.0, 3.0}, "test_3x3_spd_system");
@@ -216,17 +222,17 @@ namespace {
         Matrix A(4, 4);
         Vector b(4);
 
-        A(0, 0) = 2.0; A(0, 1) = 0.0; A(0, 2) = 0.0; A(0, 3) = 0.0;
-        A(1, 0) = 0.0; A(1, 1) = 3.0; A(1, 2) = 0.0; A(1, 3) = 0.0;
-        A(2, 0) = 0.0; A(2, 1) = 0.0; A(2, 2) = 4.0; A(2, 3) = 0.0;
-        A(3, 0) = 0.0; A(3, 1) = 0.0; A(3, 2) = 0.0; A(3, 3) = 5.0;
+        A(0, 0) = 2.0;
+        A(1, 1) = 3.0;
+        A(2, 2) = 4.0;
+        A(3, 3) = 5.0;
 
         b(0) = 2.0;
         b(1) = 6.0;
         b(2) = 12.0;
         b(3) = 20.0;
 
-        PoissonOperator op = make_finalized_operator(A);
+        PoissonOperator op = make_operator(A);
         Vector x = conjugate_gradient(op, b);
 
         require_vector_close(x, {1.0, 2.0, 3.0, 4.0}, "test_diagonal_spd_system");
@@ -237,17 +243,17 @@ namespace {
         Matrix A(4, 4);
         Vector b(4);
 
-        A(0, 0) = 2.0;  A(0, 1) = -1.0; A(0, 2) = 0.0;  A(0, 3) = 0.0;
-        A(1, 0) = -1.0; A(1, 1) = 2.0;  A(1, 2) = -1.0; A(1, 3) = 0.0;
-        A(2, 0) = 0.0;  A(2, 1) = -1.0; A(2, 2) = 2.0;  A(2, 3) = -1.0;
-        A(3, 0) = 0.0;  A(3, 1) = 0.0;  A(3, 2) = -1.0; A(3, 3) = 2.0;
+        A(0, 0) = 2.0;  A(0, 1) = -1.0;
+        A(1, 0) = -1.0; A(1, 1) = 2.0;  A(1, 2) = -1.0;
+        A(2, 1) = -1.0; A(2, 2) = 2.0;  A(2, 3) = -1.0;
+        A(3, 2) = -1.0; A(3, 3) = 2.0;
 
         b(0) = 0.0;
         b(1) = 0.0;
         b(2) = 0.0;
         b(3) = 5.0;
 
-        PoissonOperator op = make_finalized_operator(A);
+        PoissonOperator op = make_operator(A);
         Vector x = conjugate_gradient(op, b);
 
         require_vector_close(
@@ -255,6 +261,7 @@ namespace {
             {1.0, 2.0, 3.0, 4.0},
             "test_poisson_like_tridiagonal_system"
         );
+
         require_residual_small(A, x, b, "test_poisson_like_tridiagonal_system");
     }
 
@@ -268,14 +275,14 @@ namespace {
         b(0) = 2.5;
         b(1) = 4.5;
 
-        PoissonOperator op = make_finalized_operator(A);
+        PoissonOperator op = make_operator(A);
         Vector x = conjugate_gradient(op, b);
 
         require_vector_close(x, {1.0, 2.0}, "test_decimal_spd_system");
         require_residual_small(A, x, b, "test_decimal_spd_system");
     }
 
-} // namespace
+}
 
 int main() {
     int passed = 0;
