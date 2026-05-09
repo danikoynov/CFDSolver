@@ -2,7 +2,7 @@
 #include <optional>
 #include "core/grid.hpp"
 #include "linalg/gaussian_elimination.hpp"
-#include "linalg/linear_operator.hpp"
+#include "linalg/poisson_operator.hpp"
 #include "linalg/matrix.hpp"
 #include "linalg/vector.hpp"
 
@@ -54,9 +54,9 @@ namespace cfd {
 
             void project(double timestep);
             std::optional<double> build_equation(int i, int j, double timestep,
-                linalg::LinearOperator& poisson_matrix, linalg::Vector& poisson_rhs);
+                linalg::PoissonOperator& poisson_matrix, linalg::Vector& poisson_rhs);
             void fix_cell(int i, int j, double val,
-                linalg::LinearOperator& poisson_matrix,
+                linalg::PoissonOperator& poisson_matrix,
                 linalg::Vector& poisson_rhs
             );
             

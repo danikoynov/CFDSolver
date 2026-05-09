@@ -1,43 +1,76 @@
 #include "linalg/conjugate_gradient.hpp"
+
 #include <cmath>
+#include <stdexcept>
 
 namespace cfd::linalg {
-
-    Vector conjugate_gradient(const LinearOperator& A, const Vector& b) {
-        const double TOL = 1e-6;
-        const std::size_t MAX_ITER = 10 * b.n();
-
-        Vector x(b.n());
-        Vector r = b - A.apply(x);
-        Vector p = r;
-        double last_rr = Vector::dot(r, r);
+ 
+    Vector conjugate_gradient(const PoissonOperator& A, const Vector& b) {
+        const double TOL = 1e-3;
+        const int MAX_ITERATIONS = 10000;
 
         auto within_tolerance = [TOL](const Vector& v) {
             for (std::size_t i = 0; i < v.n(); i++) {
-                if (std::abs(v(i)) > TOL) return false;
+                if (std::abs(v(i)) > TOL) {
+                    return false;
+                }
             }
             return true;
         };
 
-        std::size_t iters = 0;
-        while (iters++ < MAX_ITER) {
-            if (iters % 10 == 0 && within_tolerance(r)) break;
+        Vector x(b.n());
 
-            Vector Ap    = A.apply(p);
-            double alpha = last_rr / Vector::dot(p, Ap);
+        Vector Ax = A.apply(x);
+        Vector r = b - Ax;
 
-            x.axpy( alpha, p);
-            r.axpy(-alpha, Ap);
+        Vector z = A.apply_preconditioner(r);
+        Vector p = z;
 
-            double new_rr = Vector::dot(r, r);
-            double beta   = new_rr / last_rr;
-            last_rr       = new_rr;
+        double rz = Vector::dot(r, z);
 
-            p *= beta;
-            p.axpy(1.0, r);
+        int iterations = 0;
+
+        while (!within_tolerance(r)) {
+            if (iterations >= MAX_ITERATIONS) {
+                throw std::runtime_error("Conjugate gradient failed to converge.");
+            }
+
+            iterations++;
+
+            Vector Ap = A.apply(p);
+
+            const double pAp = Vector::dot(p, Ap);
+
+            if (std::abs(pAp) < 1e-20) {
+                throw std::runtime_error("Conjugate gradient breakdown: pAp is too small.");
+            }
+
+            const double alpha = rz / pAp;
+
+            for (std::size_t i = 0; i < b.n(); i++) {
+                x(i) += alpha * p(i);
+                r(i) -= alpha * Ap(i);
+            }
+
+            Vector z_new = A.apply_preconditioner(r);
+
+            const double rz_new = Vector::dot(r, z_new);
+
+            if (std::abs(rz) < 1e-20) {
+                throw std::runtime_error("Conjugate gradient breakdown: rz is too small.");
+            }
+
+            const double beta = rz_new / rz;
+
+            for (std::size_t i = 0; i < b.n(); i++) {
+                p(i) = z_new(i) + beta * p(i);
+            }
+
+            z = std::move(z_new);
+            rz = rz_new;
         }
 
         return x;
     }
-
+        
 }

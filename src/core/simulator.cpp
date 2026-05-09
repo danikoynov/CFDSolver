@@ -228,7 +228,7 @@ namespace cfd {
         int i,
         int j,
         double val,
-        linalg::LinearOperator& poisson_matrix,
+        linalg::PoissonOperator& poisson_matrix,
         linalg::Vector& poisson_rhs
     ) {
         // Fixes the pressure of a cell to a given value
@@ -273,7 +273,7 @@ namespace cfd {
         int i,
         int j,
         double timestep,
-        linalg::LinearOperator& poisson_matrix,
+        linalg::PoissonOperator& poisson_matrix,
         linalg::Vector& poisson_rhs
     ) {
         // Build the equation for cell [i, j]
@@ -421,7 +421,10 @@ namespace cfd {
         // Each connected island of fluid cells requires an additional
         // constraint in the system (Neumann problem). Currently, only
         // one island is considered.
-        linalg::LinearOperator poisson_matrix(number_of_cells, number_of_cells);
+        linalg::PoissonOperator poisson_matrix(
+            grid_.width(),
+            grid_.height()
+        );
         linalg::Vector poisson_rhs(number_of_cells);
 
         std::vector<std::pair<int, double>> constrained_cells;
@@ -477,8 +480,7 @@ namespace cfd {
             fix_cell(i, j, value, poisson_matrix, poisson_rhs);
         }
 
-        poisson_matrix.init_csr(); // Creates compressed sparse row structure
-        poisson_matrix.sterilize(); // Remove zero entries
+        poisson_matrix.finalize();
 
         linalg::Vector pressure_values =
             linalg::conjugate_gradient(poisson_matrix, poisson_rhs);
