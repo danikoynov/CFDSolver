@@ -27,16 +27,23 @@ add_library(cfd_core
     src/core/simulator.cpp
 )
 
+add_library(cfd_setups
+    src/setups/ldc.cpp
+    src/setups/base.cpp
+    src/setups/pdc.cpp
+)
 pybind11_add_module(cfdsolver_py
     src/python/bindings.cpp
 )
 
 target_link_libraries(cfdsolver_py PRIVATE cfd_core)
+target_link_libraries(cfdsolver_py PRIVATE cfd_setups)
 target_include_directories(cfdsolver_py PRIVATE include)
 
 
 target_include_directories(cfd_linalg PUBLIC include)
 target_include_directories(cfd_core PUBLIC include)
+target_include_directories(cfd_setups PUBLIC include)
 
 # Unit tests
 add_executable(test_gaussian_elimination
