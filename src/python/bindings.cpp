@@ -6,6 +6,9 @@
 #include "core/velocity_field.hpp"
 #include "setups/base.hpp"
 #include "setups/ldc.hpp"
+#include "setups/pdc.hpp"
+#include "setups/airfoil_flow.hpp"
+
 
 namespace py = pybind11;
 
@@ -82,4 +85,24 @@ PYBIND11_MODULE(cfdsolver_py, m) {
         .def("impose_boundary_conditions",
              &cfd::setups::LidDrivenCavity::impose_boundary_conditions);
 
+    py::class_<cfd::setups::PressureDrivenChannel, cfd::setups::BaseSetup>(
+        m,
+        "PressureDrivenChannel"
+    )
+        .def(py::init<double>())
+        .def(
+            "impose_boundary_conditions",
+            &cfd::setups::PressureDrivenChannel::impose_boundary_conditions
+        );
+    
+    py::class_<cfd::setups::AirfoilFlowSetup>(m, "AirfoilFlowSetup")
+        .def(py::init<
+            const std::string&,
+            double,
+            double,
+            double,
+            double
+        >())
+        .def("impose_boundary_conditions",
+            &cfd::setups::AirfoilFlowSetup::impose_boundary_conditions);
 }

@@ -48,6 +48,9 @@ namespace cfd {
             double get_u_laplacian(int i, int j) const;
             double get_v_laplacian(int i, int j) const;
 
+            void set_u(int i, int j, double value);
+            void set_v(int i, int j, double value);
+
             Velocity2D sample_at_horizontal_face(int i, int j) const;
             Velocity2D sample_at_vertical_face(int i, int j) const;
             Velocity2D sample_at_coordinates(double x, double y) const;

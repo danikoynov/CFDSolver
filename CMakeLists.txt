@@ -28,6 +28,8 @@ add_library(cfd_core
 )
 
 add_library(cfd_setups
+    src/setups/airfoils/airfoil.cpp
+    src/setups/airfoil_flow.cpp
     src/setups/ldc.cpp
     src/setups/base.cpp
     src/setups/pdc.cpp

@@ -261,4 +261,14 @@ namespace cfd {
         return {u, v};
     }
 
+    void VelocityField::set_u(int i, int j, double value) {
+        // Set the u-velocity at the vertical face [i, j].
+        get_u(i, j) = value;
+    }
+
+    void VelocityField::set_v(int i, int j, double value) {
+        // Set the v-velocity at the horizontal face [i, j].
+        get_v(i, j) = value;
+    }
+
 }
