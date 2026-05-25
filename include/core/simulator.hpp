@@ -5,6 +5,7 @@
 #include "linalg/poisson_operator.hpp"
 #include "linalg/matrix.hpp"
 #include "linalg/vector.hpp"
+#include <filesystem>
 
 /**
  * Workflow of Simulator tick
@@ -32,6 +33,12 @@ namespace cfd {
             double viscosity_;
             bool apply_gravity_;
 
+            std::optional<linalg::Vector> pressure_warm_start_;
+
+            bool profile_cg_ = false;
+            bool save_profile_cg_data_ = false;
+            std::filesystem::path profile_cg_output_dir_;
+
         public:
             Simulator(
                 std::size_t width, 
@@ -40,9 +47,6 @@ namespace cfd {
                 double fluid_density, 
                 bool apply_gravity,
                 double viscosity);
-
-                
-
 
             double determine_timestep() const;
             void apply_boundary_conditions();
@@ -69,5 +73,11 @@ namespace cfd {
             
             const Grid& grid() const;
             Grid& grid();
+                            
+            void profile_cg_config(
+                bool profile_cg, 
+                bool save_profile_cg_data,
+                std::optional<std::filesystem::path> profile_cg_output_dir
+            );
     };
 }

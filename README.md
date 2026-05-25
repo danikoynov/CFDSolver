@@ -11,9 +11,10 @@ FlowGrid currently includes the following core features:
 - A 2D incompressible flow solver based on a staggered-grid formulation
 - Support for custom boundary conditions to define different flow setups
 - C++ solver implementation with Python bindings for experimentation and analysis
-- A Python visualizer for inspecting simulation results
-- Pre-built setups for the lid-driven cavity and pressure-driven channel test cases
+- An interactive PyQt6 dashboard for configuring, running, and visualising simulations in real time
+- Pre-built setups for the lid-driven cavity, pressure-driven channel, and airfoil flow (NACA 4-digit profiles)
 - Sparse Poisson pressure solve using preconditioned conjugate gradient with an IC(0) preconditioner
+- Warm-started conjugate gradient: each tick reuses the previous pressure solution as an initial guess, reducing iteration counts significantly for steady or slowly-evolving flows
 
 ## Benchmarking and Validation
 
@@ -106,20 +107,35 @@ On Windows, this may mean passing the full path to the Python executable you wan
 
 After building the project, the main entry points are the Python setup scripts and the benchmark executable.
 
-#### Python Setups
+#### Interactive Dashboard
 
-The two pre-built flow setups can be run with:
+The primary way to run FlowGrid is through the PyQt6 dashboard:
+
+```bash
+python python/gui/main.py
+```
+
+The dashboard lets you select a flow setup (lid-driven cavity, pressure-driven channel, or airfoil flow), configure its parameters, and watch the simulation evolve in real time. The field renderer shows pressure or speed as a colour map, and an optional velocity-vector overlay can be toggled on or off.
+
+![FlowGrid dashboard](images/ui_example.png)
+
+On Windows with MSYS2, set the DLL directory before launching if needed:
+
+```powershell
+$env:FLOWGRID_DLL_DIR = "C:\msys64\ucrt64\bin"
+python python/gui/main.py
+```
+
+#### Standalone Setup Scripts
+
+Individual setups can also be run without the GUI:
 
 ```bash
 python python/setups/lid_driven_cavity.py
 python python/setups/pressure_driven_channel.py
 ```
-In both setup scripts, a constant variable can be toggled to choose between profile mode and visualizer mode:
 
-- visualizer mode displays the simulated flow field
-- profile mode generates the velocity-profile output used for benchmark comparison
-
-These scripts use the Python bindings together with the visualizer to run and inspect the corresponding flow case.
+In both scripts a constant can be toggled to choose between visualiser mode and profile mode, where profile mode generates the velocity-profile output used for benchmark comparison.
 
 #### Benchmark
 
@@ -141,7 +157,8 @@ The repository is organized into a few main components:
 - `src/linalg/` contains the linear algebra utilities used by the solver, including the **Poisson operator**, **conjugate gradient method**, and **Incomplete Cholesky IC(0) preconditioner** used in the pressure projection step.
 - `src/python/` contains the **Python bindings** that expose the C++ solver to Python.
 - `include/` contains the header files defining the classes and methods implemented in `src/`.
-- `python/` contains the Python-side utilities, including the **visualizer** and the predefined setup scripts under `python/setups/`.
+- `python/gui/` contains the **PyQt6 dashboard** (`main.py` entry point), including the field renderer, arrow velocity-vector overlay, control panel, and simulation controller that bridges the GUI to the C++ bindings.
+- `python/setups/` contains standalone setup scripts that run individual flow cases outside the GUI.
 - `benchmarks/` contains the benchmark code used to validate solver behavior against reference results.
 - `tests/` contains automated tests, split into **unit tests** and **integration tests**.
 - `images/` contains the figures used in the README and other project documentation.
@@ -206,7 +223,7 @@ This is a major improvement because:
 
 In practice, for this type of grid-based Poisson solve, conjugate gradient often gives behavior closer to **\(O(m^3)\)**, while a pessimistic bound is around **\(O(m^4)\)**. This makes it far more suitable than Gaussian elimination for pressure projection in incompressible flow simulation.
 
-FlowGrid now uses a preconditioned conjugate gradient method for the pressure solve. The pressure matrix is represented by a dedicated `PoissonOperator`, which stores the sparse grid-based system and builds an Incomplete Cholesky IC(0) preconditioner.
+FlowGrid uses a preconditioned conjugate gradient method for the pressure solve. The pressure matrix is represented by a dedicated `PoissonOperator`, which stores the sparse grid-based system and builds an Incomplete Cholesky IC(0) preconditioner.
 
 The preconditioner approximates the Poisson matrix as
 
@@ -216,14 +233,20 @@ A \approx LL^T
 
 while preserving the local grid stencil structure. During each CG iteration, the residual is approximately solved through forward and backward triangular sweeps. This reduces the effective condition number of the system and significantly improves convergence compared with unpreconditioned CG.
 
+### Warm-Started Pressure Solve
+
+Rather than initialising the pressure solution from zero on every tick, FlowGrid reuses the previous tick's converged pressure field as the initial guess for the next solve. For steady or slowly-evolving flows the pressure changes little between timesteps, so the initial residual is already small and CG converges in far fewer iterations. The warm start is discarded automatically whenever a new simulation is created.
+
 
 ## Future Work
 
 Planned next steps for FlowGrid include:
 
-- adding support for **flow over an airfoil**, extending the solver beyond the current cavity and channel benchmarks
-- improving the **user interface** for configuring and interacting with simulations
-- making the **conjugate gradient solver multithreaded** to accelerate the projection step
+- making the **conjugate gradient solver multithreaded** to accelerate the projection step on large grids
+- adding a **bulk numpy export API** to the C++ bindings to eliminate per-cell Python overhead during field extraction
+- caching the **Poisson matrix** between ticks so it is only rebuilt when the grid topology changes
+- adding **inflow/outflow boundary conditions** to enable more realistic external flow configurations
+- extending **validation benchmarks** to higher Reynolds numbers (Re = 400, Re = 1000) against the Ghia et al. reference data
 
 ## License
 

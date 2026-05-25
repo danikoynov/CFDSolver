@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
 from gui.setup_schema import (
     INT_PARAMS,
     PARAM_LABELS,
+    PARAM_RANGES,
     PARAMS_BY_SETUP,
     SETUP_DEFAULTS,
     TEXT_PARAMS,
@@ -257,7 +258,8 @@ class ControlPanel(QFrame):
             )
         )
 
-        widget.setRange(1e-9, 1e9)
+        lo, hi = PARAM_RANGES.get(name, (1e-9, 1e9))
+        widget.setRange(lo, hi)
         widget.setDecimals(decimals_for_param(name))
         widget.setSingleStep(step_for_param(name))
         widget.setValue(value)

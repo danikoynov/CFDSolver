@@ -86,7 +86,7 @@ def combo_style() -> str:
 
 def spin_style() -> str:
     return (
-        "QSpinBox, QDoubleSpinBox {"
+        "QSpinBox, QDoubleSpinBox, QLineEdit {"
         "  background: #1e2030;"
         "  color: #c8d0e8;"
         "  border: 1px solid #3a3f58;"
@@ -147,11 +147,13 @@ def slider_style() -> str:
 
 
 def button_style(accent: str | None = None) -> str:
-    base = (
+    color = accent or "#c8d0e8"
+    border = accent or "#3a3f58"
+    return (
         "QPushButton {"
         "  background: #1e2030;"
-        "  color: #c8d0e8;"
-        "  border: 1px solid #3a3f58;"
+        f"  color: {color};"
+        f"  border: 1px solid {border};"
         "  border-radius: 4px;"
         "  padding: 4px 14px;"
         "  font-family: 'JetBrains Mono', 'Consolas', monospace;"
@@ -167,16 +169,6 @@ def button_style(accent: str | None = None) -> str:
         "QPushButton:disabled {"
         "  color: #555970;"
         "  border-color: #2a2f3a;"
-        "}"
-    )
-
-    if accent is None:
-        return base
-
-    return base + (
-        "QPushButton {"
-        f"  border-color: {accent};"
-        f"  color: {accent};"
         "}"
     )
 

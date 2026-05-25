@@ -5,5 +5,5 @@
 
 namespace cfd::linalg {
 
-    Vector conjugate_gradient(const PoissonOperator& A, const Vector& b, const Vector* x0 = nullptr);
+    Vector profiled_conjugate_gradient_noic(const PoissonOperator& A, const Vector& b);
 }

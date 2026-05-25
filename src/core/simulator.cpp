@@ -1,6 +1,8 @@
 #include "core/simulator.hpp"
 #include "linalg/gaussian_elimination.hpp"
 #include "linalg/conjugate_gradient.hpp"
+#include "linalg/profile/profiled_conjugate_gradient.hpp"
+
 #include <optional>
 #include <stdexcept>
 #include <iostream>
@@ -482,9 +484,29 @@ namespace cfd {
 
         poisson_matrix.finalize();
 
-        linalg::Vector pressure_values =
-            linalg::conjugate_gradient(poisson_matrix, poisson_rhs);
+        const linalg::Vector* warm_start = nullptr;
+        if (pressure_warm_start_.has_value() &&
+            pressure_warm_start_->n() == static_cast<std::size_t>(number_of_cells)) {
+            warm_start = &(*pressure_warm_start_);
+        }
 
+        linalg::Vector pressure_values(poisson_rhs.n());
+
+        if (profile_cg_ == false) {
+            pressure_values =
+                linalg::conjugate_gradient(poisson_matrix, poisson_rhs, warm_start);
+        }
+        else {
+            pressure_values =
+                linalg::profiled_conjugate_gradient(
+                    poisson_matrix,
+                    poisson_rhs,
+                    save_profile_cg_data_,
+                    profile_cg_output_dir_
+                );
+        }
+
+        pressure_warm_start_ = pressure_values;
         set_pressure_values(pressure_values);
         apply_pressure_gradient(timestep);
     }
@@ -539,5 +561,24 @@ namespace cfd {
 
     const Grid& Simulator::grid() const {
         return grid_;
+    }
+
+    void Simulator::profile_cg_config(
+        bool profile_cg,
+        bool save_profile_cg_data,
+        std::optional<std::filesystem::path> profile_cg_output_dir
+    ) {
+        if (save_profile_cg_data && !profile_cg_output_dir.has_value()) {
+            throw std::invalid_argument(
+                "Cannot save CG profiling data without providing an output directory."
+            );
+        }
+
+        profile_cg_ = profile_cg;
+        save_profile_cg_data_ = save_profile_cg_data;
+
+        if (profile_cg_output_dir.has_value()) {
+            profile_cg_output_dir_ = profile_cg_output_dir.value();
+        }
     }
 }

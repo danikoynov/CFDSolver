@@ -11,3 +11,8 @@ Logbook.txt
 
 #Python
 python/__pycache__
+
+# Claude
+CLAUDE.md
+.claude/
+graphify-out/

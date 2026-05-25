@@ -17,6 +17,8 @@ add_library(cfd_linalg
     src/linalg/vector.cpp
     src/linalg/poisson_operator.cpp
     src/linalg/conjugate_gradient.cpp
+    src/linalg/profiled_conjugate_gradient.cpp
+    src/linalg/profile/profiled_conjugate_gradient.cpp
 )
 
 add_library(cfd_core
@@ -130,3 +132,14 @@ add_executable(lid_driven_cavity_benchmark
 )
 
 target_link_libraries(lid_driven_cavity_benchmark PRIVATE cfd_core)
+
+# Profiling
+
+add_executable(profile_conjugate_gradient
+    profiling/profile_cg.cpp
+)
+
+target_link_libraries(profile_conjugate_gradient PRIVATE 
+    cfd_core
+    cfd_setups
+)

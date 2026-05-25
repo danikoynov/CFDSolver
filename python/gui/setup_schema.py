@@ -94,6 +94,14 @@ TEXT_PARAMS: set[str] = {
 }
 
 
+# Per-parameter (min, max) overrides for spin boxes.
+# Float params default to (1e-9, 1e9); int params default to (1, 10_000).
+PARAM_RANGES: dict[str, tuple[float, float]] = {
+    "angle_of_attack_deg": (-90.0, 90.0),
+    "pressure_difference": (-1e6, 1e6),
+}
+
+
 def decimals_for_param(name: str) -> int:
     if name in {"length", "chord"}:
         return 3

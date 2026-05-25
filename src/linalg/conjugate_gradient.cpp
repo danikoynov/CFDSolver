@@ -5,7 +5,7 @@
 
 namespace cfd::linalg {
  
-    Vector conjugate_gradient(const PoissonOperator& A, const Vector& b) {
+    Vector conjugate_gradient(const PoissonOperator& A, const Vector& b, const Vector* x0) {
         const double TOL = 1e-3;
         const int MAX_ITERATIONS = 10000;
 
@@ -19,6 +19,9 @@ namespace cfd::linalg {
         };
 
         Vector x(b.n());
+        if (x0 != nullptr) {
+            x = *x0;
+        }
 
         Vector Ax = A.apply(x);
         Vector r = b - Ax;

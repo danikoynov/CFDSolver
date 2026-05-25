@@ -18,18 +18,14 @@ root = python_dir.parent
 build_dir = root / "build"
 
 if hasattr(os, "add_dll_directory"):
-    os.add_dll_directory(r"C:\msys64\ucrt64\bin")
+    dll_dir = os.environ.get("FLOWGRID_DLL_DIR", r"C:\msys64\ucrt64\bin")
+    if os.path.isdir(dll_dir):
+        os.add_dll_directory(dll_dir)
 
 sys.path.insert(0, str(build_dir))
 sys.path.insert(0, str(python_dir))
 
 import cfdsolver_py
-
-
-def cell_center_velocity(vf, x: int, y: int) -> tuple[float, float]:
-    u = 0.5 * (vf.get_u(x, y) + vf.get_u(x + 1, y))
-    v = 0.5 * (vf.get_v(x, y) + vf.get_v(x, y + 1))
-    return u, v
 
 
 class SimulationController:
@@ -206,47 +202,26 @@ class SimulationController:
     # Field accessors
     # ------------------------------------------------------------------
 
-    def _flat_to_grid(self, values) -> np.ndarray:
-        return np.array(values, dtype=np.float32).reshape(
-            self.grid_h,
-            self.grid_w,
-        )
-
     def pressure_field(self) -> np.ndarray:
         p = self.sim.grid().pressure()
-
-        vals = [
-            p.get(i, j)
-            for j, i in zip(self._j_flat, self._i_flat)
-        ]
-
-        return self._flat_to_grid(vals)
+        n = len(self._j_flat)
+        vals = np.empty(n, dtype=np.float32)
+        for k, (j, i) in enumerate(zip(self._j_flat, self._i_flat)):
+            vals[k] = p.get(i, j)
+        return vals.reshape(self.grid_h, self.grid_w)
 
     def velocity_fields(self) -> tuple[np.ndarray, np.ndarray]:
         vf = self.sim.grid().velocity()
-
-        pairs = [
-            cell_center_velocity(vf, i, j)
-            for j, i in zip(self._j_flat, self._i_flat)
-        ]
-
-        u_flat, v_flat = zip(*pairs)
-
-        u = np.array(u_flat, dtype=np.float32).reshape(
-            self.grid_h,
-            self.grid_w,
+        n = len(self._j_flat)
+        u_flat = np.empty(n, dtype=np.float32)
+        v_flat = np.empty(n, dtype=np.float32)
+        for k, (j, i) in enumerate(zip(self._j_flat, self._i_flat)):
+            u_flat[k] = 0.5 * (vf.get_u(i, j) + vf.get_u(i + 1, j))
+            v_flat[k] = 0.5 * (vf.get_v(i, j) + vf.get_v(i, j + 1))
+        return (
+            u_flat.reshape(self.grid_h, self.grid_w),
+            v_flat.reshape(self.grid_h, self.grid_w),
         )
-
-        v = np.array(v_flat, dtype=np.float32).reshape(
-            self.grid_h,
-            self.grid_w,
-        )
-
-        return u, v
-
-    def speed_field(self) -> np.ndarray:
-        u, v = self.velocity_fields()
-        return np.hypot(u, v)
 
     def solid_mask(self) -> np.ndarray:
         if self._solid_cache is not None:

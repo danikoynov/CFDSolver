@@ -201,8 +201,6 @@ class MainWindow(QMainWindow):
         self.timer.stop()
 
         try:
-            params = self._sanitize_params(setup_name, params)
-
             self.sim.configure(setup_name, params)
             self._after_simulation_recreated()
 
@@ -228,34 +226,6 @@ class MainWindow(QMainWindow):
         self._reset_plot_range()
         self.update_view(force_arrows=True)
 
-    # ------------------------------------------------------------------
-    # Parameter sanitization
-    # ------------------------------------------------------------------
-
-    def _sanitize_params(self, setup_name: str, params: dict) -> dict:
-        params = dict(params)
-
-        if setup_name == "Airfoil flow":
-            raw_code = params.get("naca_code", "2412")
-
-            # The control panel may accidentally send 2412.0 if it used
-            # a QDoubleSpinBox instead of a QLineEdit.
-            if isinstance(raw_code, float) and raw_code.is_integer():
-                naca_code = str(int(raw_code))
-            elif isinstance(raw_code, int):
-                naca_code = str(raw_code)
-            else:
-                naca_code = str(raw_code).strip()
-
-                if naca_code.endswith(".0"):
-                    maybe_integer = naca_code[:-2]
-                    if maybe_integer.isdigit():
-                        naca_code = maybe_integer
-
-            params["naca_code"] = naca_code
-
-        return params
-
     def _show_error(self, title: str, exc: Exception) -> None:
         QMessageBox.critical(
             self,
@@ -270,11 +240,13 @@ class MainWindow(QMainWindow):
     def update_view(self, force_arrows: bool = False) -> None:
         solid = self.sim.solid_mask()
         field_name = self.control_panel.selected_field()
+        u = v = None
 
         if field_name == "Pressure":
             field = self.sim.pressure_field()
         elif field_name == "Speed":
-            field = self.sim.speed_field()
+            u, v = self.sim.velocity_fields()
+            field = np.hypot(u, v)
         else:
             raise ValueError(f"Unknown field: {field_name}")
 
@@ -282,20 +254,15 @@ class MainWindow(QMainWindow):
 
         self._view_counter += 1
 
-        should_draw_arrows = (
-            self.control_panel.arrows_enabled()
-            and (
-                force_arrows
-                or self._view_counter % self._ARROW_EVERY == 0
-            )
+        should_draw_arrows = self.control_panel.arrows_enabled() and (
+            force_arrows or self._view_counter % self._ARROW_EVERY == 0
         )
 
         if should_draw_arrows:
-            u, v = self.sim.velocity_fields()
+            if u is None:
+                u, v = self.sim.velocity_fields()
             self.arrow_renderer.draw(
-                u,
-                v,
-                solid,
+                u, v, solid,
                 density=self.control_panel.arrow_density(),
                 uniform_length=self.control_panel.uniform_arrows_enabled(),
             )
@@ -303,9 +270,7 @@ class MainWindow(QMainWindow):
             self.arrow_renderer.clear()
 
         self.iter_label.setText(f"{self.sim.step_count:,}")
-        self.range_label.setText(
-            f"{field_name}  {vmin:.4f} … {vmax:.4f}"
-        )
+        self.range_label.setText(f"{field_name}  {vmin:.4f} … {vmax:.4f}")
 
     def _force_view_update(self) -> None:
         self.update_view(force_arrows=True)

@@ -1,4 +1,4 @@
-#include "linalg/conjugate_gradient.hpp"
+#include "linalg/profiled_conjugate_gradient.hpp"
 #include <cmath>
 #include <chrono>
 #include <iostream>
@@ -7,7 +7,7 @@
 
 namespace cfd::linalg {
  
-    Vector conjugate_gradient_profiled(const LinearOperator& A, const Vector& b) {
+    Vector profiled_conjugate_gradient_noic(const PoissonOperator& A, const Vector& b) {
         using clock = std::chrono::steady_clock;
 
         auto elapsed_ms = [](const clock::time_point& a, const clock::time_point& b) {
